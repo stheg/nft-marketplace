@@ -5,14 +5,14 @@ import "./Mintable.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 
 contract MAUniqThing is Mintable, ERC721 {
+    string private _uri;
 
-    string _uri;
-    constructor() ERC721("Mad A. Uniq Thing", "MAUT") {
-    }
+    constructor() ERC721("Mad A. Uniq Thing", "MAUT") {}
 
-    function mint(address to, uint256 tokenId)
-        public 
-        minterOrOwner 
+    function _internalMint(address to, uint256 tokenId)
+        internal
+        virtual
+        override
     {
         _safeMint(to, tokenId);
     }

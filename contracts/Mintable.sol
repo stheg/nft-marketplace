@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract Mintable is Ownable {
 
-    address _minter;
+    address private _minter;
 
     modifier minterOrOwner() {
         require(
@@ -15,11 +15,21 @@ contract Mintable is Ownable {
         _;
     }
 
-    function setMinter(address newMinter) external onlyOwner {
+    function setMinter(address newMinter) public onlyOwner {
         _minter = newMinter;
     }
 
     function minter() public view returns (address) {
         return _minter;
+    }
+
+    function mint(address to, uint256 tokenId)
+        public 
+        minterOrOwner 
+    {
+        _internalMint(to, tokenId);
+    }
+
+    function _internalMint(address to, uint256 tokenId) internal virtual {
     }
 }
