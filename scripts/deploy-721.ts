@@ -1,7 +1,7 @@
 import deployContractByAccount1 from "./deploy-func";
 
 async function main() {
-  deployContractByAccount1("MAERC721");
+  deployContractByAccount1("MAERC721", ["MANFTv1", "MANFT"]);
 }
 
 // We recommend this pattern to be able to use async/await everywhere

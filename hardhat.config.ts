@@ -11,6 +11,8 @@ import "tsconfig-paths/register";
 import "./tasks/default";
 
 //UNCOMMENT AFTER COMPILATION:
+import "./tasks/erc-tasks";
+
 
 export default {
   solidity: {
