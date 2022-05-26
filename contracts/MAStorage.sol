@@ -4,60 +4,81 @@ pragma solidity ^0.8.13;
 import "./MAMAdmin.sol";
 
 contract MAStorage is MAMAdmin {
-    struct Bid {
+    struct Lot {
         address seller;
-        address bidder;
         uint256 startPrice;
-        uint256 currentPrice;
-        uint256 no;
         uint256 startDate;
+        uint256 amount;
     }
 
-    //tokenId => bid info
-    mapping(uint256 => Bid) private _bids;
+    //TokenHash => Lot info
+    mapping(uint256 => Lot) private _lots;
 
-    function _checkIfNotExists(uint256 tokenId) internal view {
+    function _checkIfNotExists(uint256 tokenId, address token) internal view {
         require(
-            _bids[tokenId].startPrice == 0,
-            "MAStorage: token already listed"
+            _lots[_getTokenHash(tokenId, token)].amount == 0,
+            "MAStorage: nft already listed"
         );
     }
 
-    function _checkIfExists(uint256 tokenId) internal view {
-        require(_bids[tokenId].startPrice > 0, "MAStorage: no such token");
+    function _checkIfExists(uint256 tokenId, address token)
+        internal
+        view
+        returns (Lot storage lot)
+    {
+        lot = _getLot(tokenId, token);
+        require(lot.amount > 0, "MAStorage: no such nft");
+        return lot;
     }
 
-    function _setBid(
+    function _setLot(
         uint256 tokenId,
+        address token,
         address seller,
         uint256 startPrice
-    ) internal {
-        _bids[tokenId] = Bid(
-            seller,
-            seller,
-            startPrice,
-            startPrice,
-            0,
-            block.timestamp
-        );
+    ) internal returns (Lot storage) {
+        return _setLotWithAmount(tokenId, token, seller, startPrice, 1);
     }
 
-    function _resetBid(uint256 tokenId) internal {
-        _setBid(tokenId, address(0), 0);
-    }
-
-    function _updateBid(
+    function _setLotWithAmount(
         uint256 tokenId,
-        address bidder,
-        uint256 newPrice
-    ) internal {
-        Bid storage bid = _bids[tokenId];
-        bid.bidder = bidder;
-        bid.currentPrice = newPrice;
-        bid.no++;
+        address token,
+        address seller,
+        uint256 startPrice,
+        uint256 amount
+    ) internal returns (Lot storage lot) {
+        lot = _getLot(tokenId, token);
+        lot.seller = seller;
+        lot.startPrice = startPrice;
+        lot.startDate = block.timestamp;
+        lot.amount = amount;
+        return lot;
     }
 
-    function _getBid(uint256 tokenId) internal view returns (Bid memory) {
-        return _bids[tokenId];
+    function _resetLot(uint256 tokenId, address token) internal virtual {
+        Lot storage startBid = _setLotWithAmount(
+            tokenId,
+            token,
+            address(0),
+            0,
+            0
+        );
+        startBid.startDate = 0;
+    }
+
+    function _getLot(uint256 tokenId, address token)
+        internal
+        view
+        returns (Lot storage)
+    {
+        return _lots[_getTokenHash(tokenId, token)];
+    }
+
+    function _getTokenHash(uint256 tokenId, address token)
+        internal
+        pure
+        returns (uint256)
+    {
+        return uint256(keccak256(abi.encodePacked(tokenId, token)));
     }
 }
