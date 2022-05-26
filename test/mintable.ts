@@ -29,4 +29,11 @@ describe("set minter", () => {
         const tx = contract.connect(minter).setMinter(minter.address);
         await expect(tx).to.be.reverted;
     });
+
+    it("should work if called by minter", async () => {
+        const minter = accounts[1];
+        await contract.setMinter(minter.address);
+
+        await contract.connect(minter)["mint(address,uint256)"](owner.address, 1);
+    });
 });
