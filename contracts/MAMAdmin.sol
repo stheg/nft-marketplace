@@ -10,8 +10,8 @@ import "./Mintable.sol";
 
 contract MAMAdmin is Ownable, Pausable {
     address internal _exchangeToken;
-    address internal _nftAddress;
-    address internal _collectableNftAddress;
+    address internal _nft721Address;
+    address internal _nft1155Address;
 
     function setExchangeToken(address newExchangeToken)
         external
@@ -30,7 +30,7 @@ contract MAMAdmin is Ownable, Pausable {
             IERC721(nft).supportsInterface(type(IERC721).interfaceId),
             "MAMAdmin: it should be IERC721"
         );
-        _nftAddress = nft;
+        _nft721Address = nft;
     }
 
     function setCollectableNFT(address collectableNft)
@@ -42,14 +42,14 @@ contract MAMAdmin is Ownable, Pausable {
             IERC1155(collectableNft).supportsInterface(type(IERC1155).interfaceId),
             "MAMAdmin: it should be IERC1155"
         );
-        _collectableNftAddress = collectableNft;
+        _nft1155Address = collectableNft;
     }
 
     function _getNFT() internal view returns (IERC721) {
-        return IERC721(_nftAddress);
+        return IERC721(_nft721Address);
     }
 
     function _getCollectableNFT() internal view returns (IERC1155) {
-        return IERC1155(_collectableNftAddress);
+        return IERC1155(_nft1155Address);
     }
 }

@@ -1,18 +1,18 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import { MAUniqCollection } from "../typechain-types";
+import { MAERC1155 } from "../typechain-types";
 
 describe("mintable erc-1155 functions", () => {
     let accounts: SignerWithAddress[];
     let owner: SignerWithAddress;
-    let contract: MAUniqCollection;
+    let contract: MAERC1155;
 
     beforeEach(async () => {
         accounts = await ethers.getSigners();
         owner = accounts[0];
 
-        const factory = await ethers.getContractFactory("MAUniqCollection", owner);
+        const factory = await ethers.getContractFactory("MAERC1155", owner);
         contract = await factory.deploy();
     });
 

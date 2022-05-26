@@ -4,10 +4,10 @@ pragma solidity ^0.8.13;
 import "./Mintable.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 
-contract MAUniqThing is Mintable, ERC721 {
+contract MAERC721 is Mintable, ERC721 {
     string private _uri;
 
-    constructor() ERC721("Mad A. Uniq Thing", "MAUT") {}
+    constructor() ERC721("Mad A. ERC721", "MAERC721") {}
 
     function _internalMint(address to, uint256 tokenId)
         internal

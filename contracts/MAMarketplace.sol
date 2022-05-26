@@ -6,12 +6,17 @@ import "./Mintable.sol";
 import "./MAAuction.sol";
 
 contract MAMarketplace is MAAuction {
+
     function createItem(uint256 tokenId, address owner) external whenNotPaused {
-        // require(
-        //     _getNFT().ownerOf(tokenId) == address(0),
-        //     "MAMarketplace: already exists"
-        // );
-        Mintable(_nftAddress).mint(owner, tokenId);
+        Mintable(_nft721Address).mint(owner, tokenId);
+    }
+
+    function createItem(
+        uint256 tokenId,
+        address owner,
+        uint256 amount
+    ) external whenNotPaused {
+        Mintable(_nft1155Address).mint(owner, tokenId, amount);
     }
 
     function listItem(uint256 tokenId, uint256 price) external whenNotPaused {
@@ -36,7 +41,7 @@ contract MAMarketplace is MAAuction {
     function cancel(uint256 tokenId) external whenNotPaused {
         _checkIfExists(tokenId);
         Bid memory bid = _getBid(tokenId);
-        require(msg.sender == bid.seller, "MAMarketplace: no access"); 
+        require(msg.sender == bid.seller, "MAMarketplace: no access");
         _resetBid(tokenId);
 
         _getNFT().transferFrom(address(this), bid.seller, tokenId);
