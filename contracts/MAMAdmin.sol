@@ -4,9 +4,11 @@ pragma solidity ^0.8.13;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
+import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 
-contract MAMAdmin is Ownable, Pausable {
+contract MAMAdmin is Ownable, Pausable, ERC721Holder, ERC1155Holder {
     address internal _exchangeToken;
     address internal _nft721Address;
     string internal _nft721uri;

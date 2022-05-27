@@ -11,9 +11,31 @@ contract MAAuction is MAStorage {
         uint256 no;
     }
 
-    uint256 private _duration = 3 days;
+    uint256 public auctionDuration = 3 days;
     //LotHash => Bid info
     mapping(uint256 => Bid) private _bids;
+
+    function getDetailsForItem(uint256 tokenId)
+        public
+        view
+        returns (Lot memory lot, Bid memory bid)
+    {
+        return (
+            _getLot(tokenId, _nft721Address),
+            _getLastBid(tokenId, _nft721Address)
+        );
+    }
+
+    function getDetailsForItemWithAmount(uint256 tokenId)
+        public
+        view
+        returns (Lot memory lot, Bid memory bid)
+    {
+        return (
+            _getLot(tokenId, _nft1155Address),
+            _getLastBid(tokenId, _nft1155Address)
+        );
+    }
 
     function listItemOnAuction(uint256 tokenId, uint256 startPrice)
         public
@@ -104,11 +126,14 @@ contract MAAuction is MAStorage {
     ) private {
         Lot memory lot = _checkIfExists(tokenId, token);
         require(
-            block.timestamp < lot.startDate + _duration,
+            block.timestamp < lot.startDate + auctionDuration,
             "MAAuction: auction has ended"
         );
         Bid memory lastBid = _getLastBid(tokenId, token);
-        require(price > lastBid.value, "MAAuction: incorrect price");
+        require(
+            price >= lot.startPrice && price > lastBid.value, 
+            "MAAuction: incorrect bid price"
+        );
 
         _updateBid(tokenId, token, msg.sender, price);
 
@@ -121,8 +146,8 @@ contract MAAuction is MAStorage {
             exchangeValue
         );
 
-        if (lastBid.bidder == lot.seller) return;
         if (msg.sender == lastBid.bidder) return;
+        if (lastBid.bidder == address(0)) return;
 
         IERC20(_exchangeToken).transfer(lastBid.bidder, lastBid.value);
     }
@@ -133,7 +158,7 @@ contract MAAuction is MAStorage {
     {
         Lot memory lot = _checkIfExists(tokenId, token);
         require(
-            block.timestamp > lot.startDate + _duration,
+            block.timestamp > lot.startDate + auctionDuration,
             "MAAuction: auction is not ended"
         );
         Bid memory lastBid = _getLastBid(tokenId, token);
@@ -168,6 +193,7 @@ contract MAAuction is MAStorage {
         return bid;
     }
 
+    // todo: refatoring: should return both lot and bid
     function _getLastBid(uint256 tokenId, address token)
         private
         view
