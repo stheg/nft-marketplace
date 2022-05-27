@@ -26,10 +26,16 @@ contract MAMarketplace is MAAuction {
 
     function listItemWithAmount(
         uint256 tokenId,
-        uint256 price,
+        uint256 pricePerOne,
         uint256 amount
     ) external whenNotPaused {
-        _listItemWithAmount(tokenId, _nft1155Address, price, amount);
+        Lot storage item = _getLot(tokenId, _nft1155Address);
+        _listItemWithAmount(
+            tokenId,
+            _nft1155Address,
+            pricePerOne, //use new price for all
+            item.amount + amount //increase amount
+        );
         _getNft1155().safeTransferFrom(
             msg.sender,
             address(this),
@@ -79,10 +85,10 @@ contract MAMarketplace is MAAuction {
     function _listItemWithAmount(
         uint256 tokenId,
         address token,
-        uint256 price,
+        uint256 pricePerOne,
         uint256 amount
     ) private {
-        _setLotWithAmount(tokenId, token, msg.sender, price, amount);
+        _setLotWithAmount(tokenId, token, msg.sender, pricePerOne, amount);
     }
 
     function _buyItemWithAmount(

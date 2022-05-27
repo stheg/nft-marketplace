@@ -30,16 +30,7 @@ contract MAStorage is MAMAdmin {
         require(lot.amount > 0, "MAStorage: no such nft");
         return lot;
     }
-
-    function _setLot(
-        uint256 tokenId,
-        address token,
-        address seller,
-        uint256 startPrice
-    ) internal returns (Lot storage) {
-        return _setLotWithAmount(tokenId, token, seller, startPrice, 1);
-    }
-
+    
     function _setLotWithAmount(
         uint256 tokenId,
         address token,
