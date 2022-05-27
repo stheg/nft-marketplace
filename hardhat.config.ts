@@ -12,6 +12,9 @@ import "./tasks/default";
 
 //UNCOMMENT AFTER COMPILATION:
 import "./tasks/erc-tasks";
+import "./tasks/ma-auction";
+import "./tasks/ma-marketplace";
+import "./tasks/test-setup";
 
 
 export default {
@@ -28,7 +31,7 @@ export default {
       chainId: 1337,
       forking: {
         url: `https://eth-rinkeby.alchemyapi.io/v2/${process.env.ALC_KEY}`,
-        blockNumber: 10691345
+        blockNumber: 10691345,
       },
     }
   },

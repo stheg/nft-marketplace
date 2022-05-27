@@ -1,11 +1,11 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.13;
 
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "./Mintable.sol";
 
-contract MAERC721 is Mintable, ERC721Enumerable {
-    string private _uri;
+contract MAERC721 is Mintable, ERC721 {
+    string private _uri = "https://bafybeias3z4idhq47k7f6hlfgagiadeu6tkin4al47ue6izjxjgi6cjgim.ipfs.nftstorage.link/metadata/";
 
     constructor(string memory name, string memory symbol)
         ERC721(name, symbol)
