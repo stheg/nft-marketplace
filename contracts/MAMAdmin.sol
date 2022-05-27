@@ -21,22 +21,22 @@ contract MAMAdmin is Ownable, Pausable {
         _exchangeToken = newExchangeToken;
     }
 
-    function setNft721(address nft) external onlyOwner whenPaused {
-        require(
-            IERC721(nft).supportsInterface(type(IERC721).interfaceId),
-            "MAMAdmin: it should be IERC721"
-        );
-        _nft721Address = nft;
+    function setNft721(address nft721) external onlyOwner whenPaused {
+        IERC721(nft721).supportsInterface(type(IERC721).interfaceId);
+        _nft721Address = nft721;
     }
 
-    function setNft1155(address collectableNft) external onlyOwner whenPaused {
-        require(
-            IERC1155(collectableNft).supportsInterface(
-                type(IERC1155).interfaceId
-            ),
-            "MAMAdmin: it should be IERC1155"
-        );
-        _nft1155Address = collectableNft;
+    function setNft1155(address nft1155) external onlyOwner whenPaused {
+        IERC1155(nft1155).supportsInterface(type(IERC1155).interfaceId);
+        _nft1155Address = nft1155;
+    }
+
+    function pause() public onlyOwner {
+        _pause();
+    }
+
+    function unpause() public onlyOwner {
+        _unpause();
     }
 
     function _getNft721() internal view returns (IERC721) {
