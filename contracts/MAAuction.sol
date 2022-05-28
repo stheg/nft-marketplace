@@ -7,38 +7,32 @@ import "./MAStorage.sol";
 contract MAAuction is MAStorage {
     struct Bid {
         address bidder;
-        uint256 value;
-        uint256 no;
+        uint64 no;
+        uint128 value;
     }
 
     uint256 public auctionDuration = 3 days;
     //LotHash => Bid info
     mapping(uint256 => Bid) private _bids;
 
-    function getDetailsForItem(uint256 tokenId)
-        public
+    function getDetailsForItem(uint64 tokenId)
+        external
         view
         returns (Lot memory lot, Bid memory bid)
     {
-        return (
-            _getLot(tokenId, _nft721Address),
-            _getLastBid(tokenId, _nft721Address)
-        );
+        return _getLastBid(_getTokenHash(tokenId, _nft721Address));
     }
 
-    function getDetailsForItemWithAmount(uint256 tokenId)
-        public
+    function getDetailsForItemWithAmount(uint64 tokenId)
+        external
         view
         returns (Lot memory lot, Bid memory bid)
     {
-        return (
-            _getLot(tokenId, _nft1155Address),
-            _getLastBid(tokenId, _nft1155Address)
-        );
+        return _getLastBid(_getTokenHash(tokenId, _nft1155Address));
     }
 
-    function listItemOnAuction(uint256 tokenId, uint256 startPrice)
-        public
+    function listItemOnAuction(uint64 tokenId, uint128 startPrice)
+        external
         whenNotPaused
     {
         _listItemOnAuction(tokenId, _nft721Address, startPrice, 1);
@@ -46,10 +40,10 @@ contract MAAuction is MAStorage {
     }
 
     function listItemWithAmountOnAuction(
-        uint256 tokenId,
-        uint256 startPrice,
-        uint256 amount
-    ) public whenNotPaused {
+        uint64 tokenId,
+        uint128 startPrice,
+        uint128 amount
+    ) external whenNotPaused {
         _listItemOnAuction(tokenId, _nft1155Address, startPrice, amount);
         _getNft1155().safeTransferFrom(
             msg.sender,
@@ -60,28 +54,28 @@ contract MAAuction is MAStorage {
         );
     }
 
-    function makeBid(uint256 tokenId, uint256 price) public whenNotPaused {
+    function makeBid(uint64 tokenId, uint128 price) external whenNotPaused {
         _makeBid(tokenId, _nft721Address, price);
     }
 
-    function makeBidForItemWithAmount(uint256 tokenId, uint256 price)
-        public
+    function makeBidForItemWithAmount(uint64 tokenId, uint128 price)
+        external
         whenNotPaused
     {
         _makeBid(tokenId, _nft1155Address, price);
     }
 
-    function finishAuction(uint256 tokenId) public whenNotPaused {
+    function finishAuction(uint64 tokenId) external whenNotPaused {
         (address recipient, ) = _finishAuction(tokenId, _nft721Address);
 
         _getNft721().transferFrom(address(this), recipient, tokenId);
     }
 
-    function finishAuctionForItemWithAmount(uint256 tokenId)
-        public
+    function finishAuctionForItemWithAmount(uint64 tokenId)
+        external
         whenNotPaused
     {
-        (address recipient, uint256 amount) = _finishAuction(
+        (address recipient, uint128 amount) = _finishAuction(
             tokenId,
             _nft1155Address
         );
@@ -97,47 +91,45 @@ contract MAAuction is MAStorage {
 
     //###################### Internal Overriden ###############################
 
-    function _resetLot(uint256 tokenId, address token)
-        internal
-        virtual
-        override
-    {
-        Bid storage bid = _updateBid(tokenId, token, address(0), 0);
+    function _resetLot(uint256 tokenHash) internal virtual override {
+        Bid storage bid = _updateBid(tokenHash, address(0), 0);
         bid.no = 0;
-        super._resetLot(tokenId, token);
+        super._resetLot(tokenHash);
     }
 
     //########################### Private #####################################
 
     function _listItemOnAuction(
-        uint256 tokenId,
+        uint64 tokenId,
         address token,
-        uint256 startPrice,
-        uint256 amount
+        uint128 startPrice,
+        uint128 amount
     ) private {
-        _checkIfNotExists(tokenId, token);
-        _setLotWithAmount(tokenId, token, msg.sender, startPrice, amount);
+        uint256 tokenHash = _checkIfNotExists(tokenId, token);
+        _setLotWithAmount(tokenHash, msg.sender, startPrice, amount);
     }
 
     function _makeBid(
-        uint256 tokenId,
+        uint64 tokenId,
         address token,
-        uint256 price
+        uint128 price
     ) private {
-        Lot memory lot = _checkIfExists(tokenId, token);
+        (uint256 tokenHash, Lot memory lot) = _checkIfExists(tokenId, token);
         require(
             block.timestamp < lot.startDate + auctionDuration,
             "MAAuction: auction has ended"
         );
-        Bid memory lastBid = _getLastBid(tokenId, token);
+        Bid memory lastBid = _bids[
+            _getLotHash(tokenHash, lot.startDate, lot.seller)
+        ];
         require(
-            price >= lot.startPrice && price > lastBid.value, 
+            price >= lot.startPrice && price > lastBid.value,
             "MAAuction: incorrect bid price"
         );
 
-        _updateBid(tokenId, token, msg.sender, price);
+        _updateBid(tokenHash, msg.sender, price);
 
-        uint256 exchangeValue = msg.sender == lastBid.bidder
+        uint128 exchangeValue = msg.sender == lastBid.bidder
             ? price - lastBid.value
             : price;
         IERC20(_exchangeToken).transferFrom(
@@ -152,17 +144,20 @@ contract MAAuction is MAStorage {
         IERC20(_exchangeToken).transfer(lastBid.bidder, lastBid.value);
     }
 
-    function _finishAuction(uint256 tokenId, address token)
+    function _finishAuction(uint64 tokenId, address token)
         private
-        returns (address nftRecipient, uint256 amount)
+        returns (address nftRecipient, uint128 amount)
     {
-        Lot memory lot = _checkIfExists(tokenId, token);
+        (uint256 tokenHash, Lot memory lot) = _checkIfExists(tokenId, token);
         require(
             block.timestamp > lot.startDate + auctionDuration,
             "MAAuction: auction is not ended"
         );
-        Bid memory lastBid = _getLastBid(tokenId, token);
-        _resetLot(tokenId, token);
+        Bid memory lastBid = _bids[
+            _getLotHash(tokenHash, lot.startDate, lot.seller)
+        ];
+
+        _resetLot(tokenHash);
 
         address priceRecipient;
         if (lastBid.no >= 2) {
@@ -180,12 +175,12 @@ contract MAAuction is MAStorage {
     }
 
     function _updateBid(
-        uint256 tokenId,
-        address token,
+        uint256 tokenHash,
         address bidder,
-        uint256 value
+        uint128 value
     ) private returns (Bid storage bid) {
-        bid = _getLastBid(tokenId, token);
+        Lot storage lot;
+        (lot, bid) = _getLastBid(tokenHash);
         bid.bidder = bidder;
         bid.value = value;
         bid.no++;
@@ -193,24 +188,19 @@ contract MAAuction is MAStorage {
         return bid;
     }
 
-    // todo: refatoring: should return both lot and bid
-    function _getLastBid(uint256 tokenId, address token)
+    function _getLastBid(uint256 tokenHash)
         private
         view
-        returns (Bid storage)
+        returns (Lot storage lot, Bid storage)
     {
-        Lot storage lot = _getLot(tokenId, token);
-        uint256 lotHash = _getLotHash(
-            _getTokenHash(tokenId, token),
-            lot.startDate,
-            lot.seller
-        );
-        return _bids[lotHash];
+        lot = _getLot(tokenHash);
+        uint256 lotHash = _getLotHash(tokenHash, lot.startDate, lot.seller);
+        return (lot, _bids[lotHash]);
     }
 
     function _getLotHash(
         uint256 tokenHash,
-        uint256 startDate,
+        uint64 startDate,
         address seller
     ) private pure returns (uint256) {
         return

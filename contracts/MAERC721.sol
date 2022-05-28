@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "./Mintable.sol";
 
 contract MAERC721 is Mintable, ERC721 {
-    string private _uri = "https://bafybeias3z4idhq47k7f6hlfgagiadeu6tkin4al47ue6izjxjgi6cjgim.ipfs.nftstorage.link/metadata/";
+    string private _uri = "";
 
     constructor(string memory name, string memory symbol)
         ERC721(name, symbol)

@@ -5,8 +5,7 @@ import "./Mintable.sol";
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 
 contract MAERC1155 is Mintable, ERC1155 {
-    constructor() ERC1155("https://bafybeias3z4idhq47k7f6hlfgagiadeu6tkin4al47ue6izjxjgi6cjgim.ipfs.nftstorage.link/metadata/{id}") {
-    }
+    constructor() ERC1155("") {}
 
     function setURI(string memory uri) external onlyOwner {
         _setURI(uri);

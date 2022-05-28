@@ -11,9 +11,7 @@ import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 contract MAMAdmin is Ownable, Pausable, ERC721Holder, ERC1155Holder {
     address internal _exchangeToken;
     address internal _nft721Address;
-    string internal _nft721uri;
     address internal _nft1155Address;
-    string internal _nft1155uri;
 
     function setExchangeToken(address newExchangeToken)
         external

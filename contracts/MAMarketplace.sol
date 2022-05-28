@@ -18,21 +18,21 @@ contract MAMarketplace is MAAuction {
         Mintable(_nft1155Address).mint(owner, tokenId, amount);
     }
 
-    function listItem(uint256 tokenId, uint256 price) external whenNotPaused {
-        _checkIfNotExists(tokenId, _nft721Address);
-        _listItemWithAmount(tokenId, _nft721Address, price, 1);
+    function listItem(uint64 tokenId, uint128 price) external whenNotPaused {
+        uint256 tokenHash = _checkIfNotExists(tokenId, _nft721Address);
+        _listItemWithAmount(tokenHash, price, 1);
         _getNft721().safeTransferFrom(msg.sender, address(this), tokenId);
     }
 
     function listItemWithAmount(
-        uint256 tokenId,
-        uint256 pricePerOne,
-        uint256 amount
+        uint64 tokenId,
+        uint128 pricePerOne,
+        uint128 amount
     ) external whenNotPaused {
-        Lot storage item = _getLot(tokenId, _nft1155Address);
+        uint256 tokenHash = _getTokenHash(tokenId, _nft1155Address);
+        Lot storage item = _getLot(tokenHash);
         _listItemWithAmount(
-            tokenId,
-            _nft1155Address,
+            tokenHash,
             pricePerOne, //use new price for all
             item.amount + amount //increase amount
         );
@@ -45,12 +45,12 @@ contract MAMarketplace is MAAuction {
         );
     }
 
-    function buyItem(uint256 tokenId) external whenNotPaused {
+    function buyItem(uint64 tokenId) external whenNotPaused {
         _buyItemWithAmount(tokenId, _nft721Address, 1);
         _getNft721().transferFrom(address(this), msg.sender, tokenId);
     }
 
-    function buyItemWithAmount(uint256 tokenId, uint256 amount)
+    function buyItemWithAmount(uint64 tokenId, uint128 amount)
         external
         whenNotPaused
     {
@@ -64,13 +64,13 @@ contract MAMarketplace is MAAuction {
         );
     }
 
-    function cancelItem(uint256 tokenId) external whenNotPaused {
+    function cancelItem(uint64 tokenId) external whenNotPaused {
         (address recipient, ) = _cancel(tokenId, _nft721Address);
         _getNft721().transferFrom(address(this), recipient, tokenId);
     }
 
-    function cancelItemWithAmount(uint256 tokenId) external whenNotPaused {
-        (address recipient, uint256 amount) = _cancel(tokenId, _nft1155Address);
+    function cancelItemWithAmount(uint64 tokenId) external whenNotPaused {
+        (address recipient, uint128 amount) = _cancel(tokenId, _nft1155Address);
         _getNft1155().safeTransferFrom(
             address(this),
             recipient,
@@ -83,26 +83,24 @@ contract MAMarketplace is MAAuction {
     //########################### Private #####################################
 
     function _listItemWithAmount(
-        uint256 tokenId,
-        address token,
-        uint256 pricePerOne,
-        uint256 amount
+        uint256 tokenHash,
+        uint128 pricePerOne,
+        uint128 amount
     ) private {
-        _setLotWithAmount(tokenId, token, msg.sender, pricePerOne, amount);
+        _setLotWithAmount(tokenHash, msg.sender, pricePerOne, amount);
     }
 
     function _buyItemWithAmount(
-        uint256 tokenId,
+        uint64 tokenId,
         address token,
-        uint256 amount
+        uint128 amount
     ) private {
-        Lot memory item = _checkIfExists(tokenId, token);
+        (uint256 tokenHash, Lot memory item) = _checkIfExists(tokenId, token);
         if (item.amount == amount) {
-            _resetLot(tokenId, token);
+            _resetLot(tokenHash);
         } else if (item.amount > amount) {
             _setLotWithAmount(
-                tokenId,
-                token,
+                tokenHash,
                 item.seller,
                 item.startPrice,
                 item.amount - amount
@@ -118,13 +116,13 @@ contract MAMarketplace is MAAuction {
         );
     }
 
-    function _cancel(uint256 tokenId, address token)
+    function _cancel(uint64 tokenId, address token)
         private
-        returns (address nftRecipient, uint256 amount)
+        returns (address nftRecipient, uint128 amount)
     {
-        Lot memory item = _checkIfExists(tokenId, token);
+        (uint256 tokenHash, Lot memory item) = _checkIfExists(tokenId, token);
         require(msg.sender == item.seller, "MAMarketplace: no access");
-        _resetLot(tokenId, token);
+        _resetLot(tokenHash);
         return (item.seller, item.amount);
     }
 }
