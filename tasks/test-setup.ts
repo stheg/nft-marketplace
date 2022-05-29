@@ -1,5 +1,4 @@
 import { task } from "hardhat/config";
-import { IERC20 } from "../typechain-types";
 
 task("test-setup", "Performs setup of marketplace and test cases")
     .addParam("contract", "address of marketplace")

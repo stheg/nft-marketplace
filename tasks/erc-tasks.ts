@@ -21,7 +21,7 @@ task("erc721-mint", "Mints requested NFT")
             await hre.ethers.getContractAt("MAERC721", args.nft, accounts[0]);
 
         await nft.setMinter(accounts[0].address);
-        await nft["mint(address,uint256)"](args.to, Number.parseInt(args.id));
+        await nft.mint(args.to, Number.parseInt(args.id));
     });
 
 task("set-minter721", "Set minter for ERC721")
@@ -68,10 +68,11 @@ task("erc1155-mint", "Mints requested NFT")
             await hre.ethers.getContractAt("MAERC1155", args.nft, accounts[0]);
 
         await nft.setMinter(accounts[0].address);
-        await nft["mint(address,uint256,uint256)"](
+        await nft.mint(
             args.to, 
             Number.parseInt(args.id), 
-            Number.parseInt(args.amount)
+            Number.parseInt(args.amount),
+            []
         );
     });
 
