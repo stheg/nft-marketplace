@@ -7,8 +7,8 @@ You can find here:
 * Marketplace contract with auction functionality
   * MAMAdmin.sol - admin function to pause/unpause and set new tokens
   * MAStorage.sol - keeps 'Lot' info about listed items (common structure for both marketplace & auction)
-  * MAMarketplace.sol - create item, list item, buy item, cancel item (keeps 'Bid' info in addition to MAStorage 'Lot' info) 
-  * MAAuction.sol - list item on auction, make a bid, finish auction
+  * MAMarketplace.sol - create item, list item, buy item, cancel item 
+  * MAAuction.sol - list item on auction, make a bid, finish auction (keeps 'Bid' info in addition to MAStorage's 'Lot' info)
 
 You can find my deployed contracts and see how the NFTs look in OpenSea and Rarible using next URLs:
 
