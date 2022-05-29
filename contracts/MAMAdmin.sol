@@ -3,6 +3,7 @@ pragma solidity ^0.8.13;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
@@ -48,5 +49,20 @@ contract MAMAdmin is Ownable, Pausable, ERC721Holder, ERC1155Holder {
 
     function _getNft1155() internal view returns (IERC1155) {
         return IERC1155(_nft1155Address);
+    }
+
+    function _transferExchangeTokens(
+        address from,
+        address to,
+        uint128 amount
+    ) internal {
+        IERC20(_exchangeToken).transferFrom(from, to, amount);
+    }
+
+    function _transferExchangeTokens(
+        address to,
+        uint128 amount
+    ) internal {
+        IERC20(_exchangeToken).transfer(to, amount);
     }
 }

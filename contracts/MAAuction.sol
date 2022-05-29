@@ -1,7 +1,6 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.13;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./MAStorage.sol";
 
 /// @title MA Auction
@@ -17,6 +16,7 @@ contract MAAuction is MAStorage {
     uint256 public auctionDuration = 3 days;
     mapping(address => mapping(uint64 => Bid)) private _bids;
 
+    /// @notice Returns both `Lot` and `Bid` details for ERC721
     function getDetailsForItem(uint64 tokenId)
         external
         view
@@ -28,6 +28,7 @@ contract MAAuction is MAStorage {
         );
     }
 
+    /// @notice Returns both `Lot` and `Bid` details for ERC1155
     function getDetailsForItemWithAmount(uint64 tokenId)
         external
         view
@@ -39,6 +40,7 @@ contract MAAuction is MAStorage {
         );
     }
 
+    /// @notice Adds ERC721 on auction with desired start price
     function listItemOnAuction(uint64 tokenId, uint128 startPrice)
         external
         whenNotPaused
@@ -47,6 +49,7 @@ contract MAAuction is MAStorage {
         _getNft721().safeTransferFrom(msg.sender, address(this), tokenId);
     }
 
+    /// @notice Adds ERC1155 on auction with desired amount and start price
     function listItemWithAmountOnAuction(
         uint64 tokenId,
         uint128 startPrice,
@@ -62,10 +65,12 @@ contract MAAuction is MAStorage {
         );
     }
 
+    /// @notice Adds a new bid for ERC721 with desired price
     function makeBid(uint64 tokenId, uint128 price) external whenNotPaused {
         _makeBid(tokenId, _nft721Address, price);
     }
 
+    /// @notice Adds a new bid for ERC1155 with desired price
     function makeBidForItemWithAmount(uint64 tokenId, uint128 price)
         external
         whenNotPaused
@@ -73,11 +78,13 @@ contract MAAuction is MAStorage {
         _makeBid(tokenId, _nft1155Address, price);
     }
 
+    /// @notice Finishes or cancels the auction for ERC721
     function finishAuction(uint64 tokenId) external whenNotPaused {
         (address recipient, ) = _finishAuction(tokenId, _nft721Address);
         _getNft721().transferFrom(address(this), recipient, tokenId);
     }
 
+    /// @notice Finishes or cancels the auction for ERC1155
     function finishAuctionForItemWithAmount(uint64 tokenId)
         external
         whenNotPaused
@@ -141,16 +148,12 @@ contract MAAuction is MAStorage {
         uint128 exchangeValue = msg.sender == lastBid.bidder
             ? price - lastBid.value
             : price;
-        IERC20(_exchangeToken).transferFrom(
-            msg.sender,
-            address(this),
-            exchangeValue
-        );
+        _transferExchangeTokens(msg.sender, address(this), exchangeValue);
 
         if (msg.sender == lastBid.bidder) return;
         if (lastBid.bidder == address(0)) return;
 
-        IERC20(_exchangeToken).transfer(lastBid.bidder, lastBid.value);
+        _transferExchangeTokens(lastBid.bidder, lastBid.value);
     }
 
     function _finishAuction(uint64 tokenId, address token)
@@ -166,17 +169,18 @@ contract MAAuction is MAStorage {
 
         _resetLot(tokenId, token);
 
-        address priceRecipient;
+        address erc20Recipient;
         if (lastBid.no >= 2) {
             //successful auction: exchange erc20 and NFT
-            priceRecipient = lot.seller;
+            erc20Recipient = lot.seller;
             nftRecipient = lastBid.bidder;
         } else {
             //cancelled auction: return tokens to owners
-            priceRecipient = lastBid.bidder;
+            erc20Recipient = lastBid.bidder;
             nftRecipient = lot.seller;
         }
-        IERC20(_exchangeToken).transfer(priceRecipient, lastBid.value);
+
+        _transferExchangeTokens(erc20Recipient, lastBid.value);
 
         return (nftRecipient, lot.amount);
     }
