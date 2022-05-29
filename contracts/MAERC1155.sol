@@ -1,21 +1,18 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.13;
 
-import "./Mintable.sol";
-import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
+import "@openzeppelin/contracts/token/ERC1155/presets/ERC1155PresetMinterPauser.sol";
 
-contract MAERC1155 is Mintable, ERC1155 {
-    constructor() ERC1155("") {}
+contract MAERC1155 is ERC1155PresetMinterPauser {
+    constructor() ERC1155PresetMinterPauser("") {
+        revokeRole(MINTER_ROLE, msg.sender);
+    }
 
-    function setURI(string memory uri) external onlyOwner {
+    function setURI(string memory uri) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _setURI(uri);
     }
 
-    function _internalMint(
-        address to,
-        uint256 tokenId,
-        uint256 amount
-    ) internal virtual override {
-        _mint(to, tokenId, amount, "");
+    function setMinter(address minter) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _grantRole(MINTER_ROLE, minter);
     }
 }

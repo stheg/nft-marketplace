@@ -1,7 +1,8 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.13;
 
-import "./Mintable.sol";
+import "./MAERC721.sol";
+import "./MAERC1155.sol";
 import "./MAAuction.sol";
 
 /// @title MA Marketplace
@@ -10,7 +11,7 @@ import "./MAAuction.sol";
 contract MAMarketplace is MAAuction {
     /// @notice create ERC721 item
     function createItem(uint256 tokenId, address owner) external whenNotPaused {
-        Mintable(_nft721Address).mint(owner, tokenId);
+        MAERC721(_nft721Address).mint(owner, tokenId);
     }
 
     /// @notice create ERC1155 item
@@ -19,14 +20,14 @@ contract MAMarketplace is MAAuction {
         address owner,
         uint256 amount
     ) external whenNotPaused {
-        Mintable(_nft1155Address).mint(owner, tokenId, amount);
+        MAERC1155(_nft1155Address).mint(owner, tokenId, amount, "");
     }
 
     /// @notice list ERC721 item with desired price
     function listItem(uint64 tokenId, uint128 price) external whenNotPaused {
         _checkIfNotExists(tokenId, _nft721Address);
         _listItemWithAmount(tokenId, _nft721Address, price, 0);
-        _getNft721().safeTransferFrom(msg.sender, address(this), tokenId);
+        _transferERC721Tokens(msg.sender, address(this), tokenId);
     }
 
     /// @notice list ERC1155 item with desired amount and price per one token
@@ -42,51 +43,48 @@ contract MAMarketplace is MAAuction {
             pricePerOne, //use new price for all
             item.amount + amount //increase amount
         );
-        _getNft1155().safeTransferFrom(
+        _transferERC1155Tokens(
             msg.sender,
             address(this),
             tokenId,
-            amount,
-            ""
+            amount
         );
     }
 
     /// @notice buy ERC721 item
     function buyItem(uint64 tokenId) external whenNotPaused {
         _buyItemWithAmount(tokenId, _nft721Address, 0);
-        _getNft721().transferFrom(address(this), msg.sender, tokenId);
+        _transferERC721Tokens(address(this), msg.sender, tokenId);
     }
-    
+
     /// @notice buy desired amount of ERC1155 item
     function buyItemWithAmount(uint64 tokenId, uint128 amount)
         external
         whenNotPaused
     {
         _buyItemWithAmount(tokenId, _nft1155Address, amount);
-        _getNft1155().safeTransferFrom(
+        _transferERC1155Tokens(
             address(this),
             msg.sender,
             tokenId,
-            amount,
-            ""
+            amount
         );
     }
 
     /// @notice cancel selling of ERC721 item
     function cancelItem(uint64 tokenId) external whenNotPaused {
         (address recipient, ) = _cancel(tokenId, _nft721Address);
-        _getNft721().transferFrom(address(this), recipient, tokenId);
+        _transferERC721Tokens(address(this), recipient, tokenId);
     }
 
     /// @notice cancel selling of ERC1155 item
     function cancelItemWithAmount(uint64 tokenId) external whenNotPaused {
         (address recipient, uint128 amount) = _cancel(tokenId, _nft1155Address);
-        _getNft1155().safeTransferFrom(
+        _transferERC1155Tokens(
             address(this),
             recipient,
             tokenId,
-            amount,
-            ""
+            amount
         );
     }
 
@@ -96,7 +94,7 @@ contract MAMarketplace is MAAuction {
         uint64 tokenId,
         address token,
         uint128 pricePerOne,
-        uint128 amount// = 0 for ERC721
+        uint128 amount // = 0 for ERC721
     ) private {
         _setLotWithAmount(tokenId, token, msg.sender, pricePerOne, amount);
     }
@@ -104,7 +102,7 @@ contract MAMarketplace is MAAuction {
     function _buyItemWithAmount(
         uint64 tokenId,
         address token,
-        uint128 amount// = 0 for ERC721
+        uint128 amount // = 0 for ERC721
     ) private {
         Lot memory item = _checkIfExists(tokenId, token);
         if (item.amount == amount) {

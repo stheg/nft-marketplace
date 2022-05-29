@@ -3,7 +3,7 @@ import { expect } from "chai";
 import { BigNumber } from "ethers";
 import { ethers } from "hardhat";
 import { delay } from "../scripts/misc";
-import { MAAuction, MAERC1155, MAERC721 } from "../typechain-types";
+import { MAAuction, MAERC1155, MAERC721 } from "../typechain-types/contracts";
 import { IMintableERC20 } from "../typechain-types/contracts/IMintableERC20";
 const maerc20 = require("../required-data/MAERC20.json");
 
@@ -31,14 +31,14 @@ describe("MA Auction", () => {
         const factory721 = await ethers.getContractFactory("MAERC721", owner);
         erc721 = await factory721.deploy("test", "test");
         await erc721.setMinter(owner.address);
-        await erc721["mint(address,uint256)"](owner.address, tokenId);
+        await erc721.mint(owner.address, tokenId);
 
         const factory1155 = await ethers.getContractFactory("MAERC1155", owner);
         erc1155 = await factory1155.deploy();
         const factory20 = 
             await ethers.getContractFactory(maerc20.abi, maerc20.bytecode, owner);
         await erc1155.setMinter(owner.address);
-        await erc1155["mint(address,uint256,uint256)"](owner.address, tokenId, defaultErc1155Amount);
+        await erc1155.mint(owner.address, tokenId, defaultErc1155Amount, []);
         
         erc20 = await factory20.deploy("test", "test") as IMintableERC20;
 

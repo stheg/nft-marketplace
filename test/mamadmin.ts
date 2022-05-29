@@ -1,7 +1,7 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import { MAERC1155, MAERC721, MAMAdmin } from "../typechain-types";
+import { MAERC1155, MAERC721, MAMAdmin } from "../typechain-types/contracts";
 import { IMintableERC20 } from "../typechain-types/contracts/IMintableERC20";
 const maerc20 = require("../required-data/MAERC20.json");
 

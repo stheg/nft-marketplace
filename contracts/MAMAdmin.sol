@@ -1,6 +1,7 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.13;
 
+import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -49,6 +50,27 @@ contract MAMAdmin is Ownable, Pausable, ERC721Holder, ERC1155Holder {
 
     function _getNft1155() internal view returns (IERC1155) {
         return IERC1155(_nft1155Address);
+    }
+
+    function _transferERC721Tokens(
+        address from,
+        address to,
+        uint64 tokenId
+    ) internal {
+        if (to.code.length > 0) {//isContract
+            _getNft721().safeTransferFrom(from, to, tokenId);
+        } else {
+            _getNft721().transferFrom(from, to, tokenId);
+        }
+    }
+
+    function _transferERC1155Tokens(
+        address from,
+        address to,
+        uint64 tokenId,
+        uint128 amount
+    ) internal {
+        _getNft1155().safeTransferFrom(from, to, tokenId, amount, "");
     }
 
     function _transferExchangeTokens(

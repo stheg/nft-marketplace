@@ -46,7 +46,7 @@ contract MAAuction is MAStorage {
         whenNotPaused
     {
         _listItemOnAuction(tokenId, _nft721Address, startPrice, 0);
-        _getNft721().safeTransferFrom(msg.sender, address(this), tokenId);
+        _transferERC721Tokens(msg.sender, address(this), tokenId);
     }
 
     /// @notice Adds ERC1155 on auction with desired amount and start price
@@ -56,13 +56,7 @@ contract MAAuction is MAStorage {
         uint128 amount
     ) external whenNotPaused {
         _listItemOnAuction(tokenId, _nft1155Address, startPrice, amount);
-        _getNft1155().safeTransferFrom(
-            msg.sender,
-            address(this),
-            tokenId,
-            amount,
-            ""
-        );
+        _transferERC1155Tokens(msg.sender, address(this), tokenId, amount);
     }
 
     /// @notice Adds a new bid for ERC721 with desired price
@@ -81,7 +75,7 @@ contract MAAuction is MAStorage {
     /// @notice Finishes or cancels the auction for ERC721
     function finishAuction(uint64 tokenId) external whenNotPaused {
         (address recipient, ) = _finishAuction(tokenId, _nft721Address);
-        _getNft721().transferFrom(address(this), recipient, tokenId);
+        _transferERC721Tokens(address(this), recipient, tokenId);
     }
 
     /// @notice Finishes or cancels the auction for ERC1155
@@ -94,12 +88,11 @@ contract MAAuction is MAStorage {
             _nft1155Address
         );
 
-        _getNft1155().safeTransferFrom(
+        _transferERC1155Tokens(
             address(this),
             recipient,
             tokenId,
-            amount,
-            ""
+            amount
         );
     }
 
