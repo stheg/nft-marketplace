@@ -11,10 +11,10 @@ import "tsconfig-paths/register";
 import "./tasks/default";
 
 //UNCOMMENT AFTER COMPILATION:
-import "./tasks/erc-tasks";
-import "./tasks/ma-auction";
-import "./tasks/ma-marketplace";
-import "./tasks/test-setup";
+// import "./tasks/erc-tasks";
+// import "./tasks/ma-auction";
+// import "./tasks/ma-marketplace";
+// import "./tasks/test-setup";
 
 
 export default {

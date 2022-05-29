@@ -85,7 +85,6 @@ describe("MA Auction", () => {
             await contract.listItemOnAuction(tokenId, startPrice);
             const [lot, lastBid] = await contract.getDetailsForItem(tokenId);
             expect(lot.startPrice).eq(startPrice);
-            expect(lot.amount).eq(1);
             expect(lot.seller).eq(owner.address);
             expect(lastBid.bidder).eq(ethers.constants.AddressZero);
             expect(lastBid.value).eq(0);

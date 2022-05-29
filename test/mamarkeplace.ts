@@ -129,22 +129,14 @@ describe("MA Marketplace", () => {
             expect(item.amount).eq(amount1 + amount2);
             expect(item.seller).eq(owner.address);
             expect(item.startDate.gt(item1.startDate)).eq(true);
-            expect(lastBid.bidder).eq(ethers.constants.AddressZero);
-            expect(lastBid.value).eq(0);
-            expect(lastBid.no).eq(0);
         });
 
         it("should list item for nft-721", async () => {
             const price = 100;
-            const amount = 1;
             await contract.listItem(tokenId, price);
             const [item, lastBid] = await contract.getDetailsForItem(tokenId);
             expect(item.startPrice).eq(price);
-            expect(item.amount).eq(amount);
             expect(item.seller).eq(owner.address);
-            expect(lastBid.bidder).eq(ethers.constants.AddressZero);
-            expect(lastBid.value).eq(0);
-            expect(lastBid.no).eq(0);
         });
 
         it("should list item for nft-1155", async () => {
@@ -156,9 +148,6 @@ describe("MA Marketplace", () => {
             expect(item.startPrice).eq(price);
             expect(item.amount).eq(amount);
             expect(item.seller).eq(owner.address);
-            expect(lastBid.bidder).eq(ethers.constants.AddressZero);
-            expect(lastBid.value).eq(0);
-            expect(lastBid.no).eq(0);
         });
 
         it("should transfer token from owner for nft-721", async () => {
@@ -223,9 +212,6 @@ describe("MA Marketplace", () => {
             expect(item.startPrice).eq(0);
             expect(item.amount).eq(0);
             expect(item.seller).eq(ethers.constants.AddressZero);
-            expect(lastBid.bidder).eq(ethers.constants.AddressZero);
-            expect(lastBid.value).eq(0);
-            expect(lastBid.no).eq(0);
         });
 
         it("should reset info if amount equals the listed one for nft-1155", async () => {
@@ -238,9 +224,6 @@ describe("MA Marketplace", () => {
             expect(item.startPrice).eq(0);
             expect(item.amount).eq(0);
             expect(item.seller).eq(ethers.constants.AddressZero);
-            expect(lastBid.bidder).eq(ethers.constants.AddressZero);
-            expect(lastBid.value).eq(0);
-            expect(lastBid.no).eq(0);
         });
 
         it("should update info if amount less than the listed one for nft-1155", async () => {
@@ -254,14 +237,10 @@ describe("MA Marketplace", () => {
             expect(item.startPrice).eq(price);
             expect(item.amount).eq(amount - buyAmount);
             expect(item.seller).eq(owner.address);
-            expect(lastBid.bidder).eq(ethers.constants.AddressZero);
-            expect(lastBid.value).eq(0);
-            expect(lastBid.no).eq(0);
         });
 
         it("should transfer erc20 to owner for nft-721", async () => {
             const price = 100;
-            const amount = 1;
             await contract.listItem(tokenId, price);
             
             const amountBefore = await erc20.balanceOf(owner.address);
@@ -351,9 +330,6 @@ describe("MA Marketplace", () => {
             expect(item.startPrice).eq(0);
             expect(item.amount).eq(0);
             expect(item.seller).eq(ethers.constants.AddressZero);
-            expect(lastBid.bidder).eq(ethers.constants.AddressZero);
-            expect(lastBid.value).eq(0);
-            expect(lastBid.no).eq(0);
         });
 
         it("should reset info for nft-1155", async () => {
@@ -365,9 +341,6 @@ describe("MA Marketplace", () => {
             expect(item.startPrice).eq(0);
             expect(item.amount).eq(0);
             expect(item.seller).eq(ethers.constants.AddressZero);
-            expect(lastBid.bidder).eq(ethers.constants.AddressZero);
-            expect(lastBid.value).eq(0);
-            expect(lastBid.no).eq(0);
         });
 
         it("should transfer token back to owner for nft-721", async () => {

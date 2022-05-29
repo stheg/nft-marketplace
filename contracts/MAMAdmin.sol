@@ -8,6 +8,9 @@ import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 
+/// @title MA Admin
+/// @notice Provides admin functionality
+/// @dev Defines functions to set tokens
 contract MAMAdmin is Ownable, Pausable, ERC721Holder, ERC1155Holder {
     address internal _exchangeToken;
     address internal _nft721Address;
