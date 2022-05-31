@@ -9,6 +9,7 @@ import "./MAAuction.sol";
 /// @notice Provides sell/buy functionality
 /// @dev Defines functions to list, unlist(cancel) and buy items
 contract MAMarketplace is MAAuction {
+    error CannotListItemIfAuctionExists();
     /// @notice create ERC721 item
     function createItem(uint256 tokenId, address owner) external whenNotPaused {
         MAERC721(_nft721Address).mint(owner, tokenId);
@@ -37,6 +38,8 @@ contract MAMarketplace is MAAuction {
         uint128 amount
     ) external whenNotPaused {
         Lot storage item = _getLot(tokenId, _nft1155Address);
+        if (item.isAuction)
+            revert CannotListItemIfAuctionExists();
         _listItemWithAmount(
             tokenId,
             _nft1155Address,

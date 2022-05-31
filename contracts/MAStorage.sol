@@ -8,6 +8,7 @@ import "./MAMAdmin.sol";
 /// @dev Defines functions to interact with the storage
 contract MAStorage is MAMAdmin {
     struct Lot {
+        bool isAuction;
         address seller;
         uint64 startDate; //max year ~2550
         uint128 startPrice;

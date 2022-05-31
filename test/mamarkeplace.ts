@@ -171,6 +171,15 @@ describe("MA Marketplace", () => {
                 await erc1155.balanceOf(contract.address, tokenId);
             expect(balanceAfter).eq(balanceBefore.add(amount));
         });
+
+        it("should revert if auction item listed for nft-1155", async () => {
+            const price = 100;
+            const amount = 10;
+            await contract.listItemWithAmountOnAuction(tokenId, price, amount);
+            const tx = contract.listItemWithAmount(tokenId, price, amount);
+
+            await expect(tx).to.be.revertedWith("CannotListItemIfAuctionExists");
+        });
     });
 
     describe("buy item", () => {
