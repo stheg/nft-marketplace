@@ -1,8 +1,8 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { BigNumber } from "ethers";
-import { ethers } from "hardhat";
-import { delay } from "../scripts/misc";
+import { ethers, network } from "hardhat";
+import { delay, setTimeInBlockchain } from "../scripts/misc";
 import { MAAuction, MAERC1155, MAERC721 } from "../typechain-types/contracts";
 import { IMintableERC20 } from "../typechain-types/contracts/IMintableERC20";
 const maerc20 = require("../required-data/MAERC20.json");
@@ -132,6 +132,41 @@ describe("MA Auction", () => {
             const contractAmount = await erc1155.balanceOf(contract.address, tokenId);
             expect(senderAmount).eq(senderAmountBefore.sub(amount));
             expect(contractAmount).eq(contractAmountBefore.add(amount));
+        });
+
+        it("should emit event for nft-721", async () => {
+            const price = 100;
+            const nextTimestamp = await setTimeInBlockchain();
+            const tx = contract.listItemOnAuction(tokenId, price);
+
+            await expect(tx).to.emit(contract, "ItemListed")
+                .withArgs(
+                    owner.address,
+                    erc721.address,
+                    tokenId,
+                    price,
+                    0, //amount
+                    nextTimestamp,
+                    true
+                );
+        });
+
+        it("should emit event for nft-1155", async () => {
+            const price = 100;
+            const amount = 10;
+            const nextTimestamp = await setTimeInBlockchain();
+            const tx = contract.listItemWithAmountOnAuction(tokenId, price, amount);
+
+            await expect(tx).to.emit(contract, "ItemListed")
+                .withArgs(
+                    owner.address,
+                    erc1155.address,
+                    tokenId,
+                    price,
+                    amount,
+                    nextTimestamp,
+                    true
+                );
         });
 
         it("should revert if lot for such nft-721 already listed", async () => {
@@ -324,6 +359,39 @@ describe("MA Auction", () => {
             expect(erc20Bidder2Amount).eq(defaultErc20Amount - startPrice - 10);
             expect(erc20ContractAmount).eq(startPrice + 10);
         });
+
+        it("should emit event for nft-721", async () => {
+            const startPrice = 100;
+            await contract.listItemOnAuction(tokenId, startPrice);
+            const nextTimestamp = await setTimeInBlockchain();
+            const tx = contract.connect(bidder1).makeBid(tokenId, startPrice+1);
+
+            await expect(tx).to.emit(contract, "NewBid")
+                .withArgs(
+                    nextTimestamp,
+                    bidder1.address,
+                    erc721.address,
+                    tokenId,
+                    startPrice+1
+                );
+        });
+
+        it("should emit event for nft-1155", async () => {
+            const price = 100;
+            const amount = 10;
+            await contract.listItemWithAmountOnAuction(tokenId, price, amount);
+            const nextTimestamp = await setTimeInBlockchain();
+            const tx = contract.connect(bidder1).makeBidForItemWithAmount(tokenId, price+10);
+
+            await expect(tx).to.emit(contract, "NewBid")
+                .withArgs(
+                    nextTimestamp,
+                    bidder1.address,
+                    erc1155.address,
+                    tokenId,
+                    price+10
+                );
+        });
     });
 
     describe("finish auction", () => {
@@ -495,6 +563,54 @@ describe("MA Auction", () => {
 
             expect(amountAfter).eq(amountBefore.add(startPrice + 10));
             expect(nftAmountAfter).eq(nftAmountBefore.add(amount));
+        });
+
+        it("should emit event for nft-721", async () => {
+            const startPrice = 100;
+            await contract.listItemOnAuction(tokenId, startPrice);
+            await contract.connect(bidder1).makeBid(tokenId, startPrice);
+            await contract.connect(bidder2).makeBid(tokenId, startPrice + 10);
+            await delay(auctionDuration);
+            
+            await network.provider.send("evm_mine");
+
+            const nextTimestamp = await setTimeInBlockchain();
+            const tx = contract.connect(bidder1).finishAuction(tokenId);
+
+            await expect(tx).to.emit(contract, "AuctionFinished")
+                .withArgs(
+                    nextTimestamp,
+                    bidder2.address,
+                    erc721.address,
+                    tokenId,
+                    0,
+                    startPrice + 10
+                );
+        });
+
+        it("should emit event for nft-1155", async () => {
+            const startPrice = 100;
+            const amount = 10;
+
+            await contract.listItemWithAmountOnAuction(tokenId, startPrice, amount);
+            await contract.connect(bidder1)
+                .makeBidForItemWithAmount(tokenId, startPrice);
+            await contract.connect(bidder2)
+                .makeBidForItemWithAmount(tokenId, startPrice + 10);
+            await delay(auctionDuration);
+            await network.provider.send("evm_mine");
+            const nextTimestamp = await setTimeInBlockchain();
+            const tx = contract.finishAuctionForItemWithAmount(tokenId);
+
+            await expect(tx).to.emit(contract, "AuctionFinished")
+                .withArgs(
+                    nextTimestamp,
+                    bidder2.address,
+                    erc1155.address,
+                    tokenId,
+                    amount,
+                    startPrice + 10
+                );
         });
     });
 });

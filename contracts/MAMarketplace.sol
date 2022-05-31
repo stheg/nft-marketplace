@@ -9,23 +9,54 @@ import "./MAAuction.sol";
 /// @notice Provides sell/buy functionality
 /// @dev Defines functions to list, unlist(cancel) and buy items
 contract MAMarketplace is MAAuction {
+    event Sold(
+        address indexed token,
+        address indexed owner,
+        address indexed buyer,
+        uint64 date,
+        uint64 tokenId,
+        uint128 price,
+        uint128 amount
+    );
+
+    event Cancelled(
+        address indexed token,
+        address indexed owner,
+        uint64 indexed tokenId,
+        uint64 date
+    );
+
+    event ItemCreated(
+        address indexed owner,
+        address indexed token,
+        uint64 indexed tokenId,
+        uint64 date,
+        uint128 amount
+    );
+
     error CannotListItemIfAuctionExists();
+
     /// @notice create ERC721 item
-    function createItem(uint256 tokenId, address owner) external whenNotPaused {
+    function createItem(uint64 tokenId, address owner) external whenNotPaused {
         MAERC721(_nft721Address).mint(owner, tokenId);
+        emit ItemCreated(owner, _nft721Address, tokenId, uint64(block.timestamp), 0);
     }
 
     /// @notice create ERC1155 item
     function createItemWithAmount(
-        uint256 tokenId,
+        uint64 tokenId,
         address owner,
-        uint256 amount
+        uint128 amount
     ) external whenNotPaused {
         MAERC1155(_nft1155Address).mint(owner, tokenId, amount, "");
+        emit ItemCreated(owner, _nft1155Address, tokenId, uint64(block.timestamp), amount);
     }
 
     /// @notice list ERC721 item with desired price
-    function listItem(uint64 tokenId, uint128 price) external whenNotPaused {
+    function listItem(uint64 tokenId, uint128 price)
+        external
+        whenNotPaused
+    {
         _checkIfNotExists(tokenId, _nft721Address);
         _listItemWithAmount(tokenId, _nft721Address, price, 0);
         _transferERC721Tokens(msg.sender, address(this), tokenId);
@@ -36,7 +67,10 @@ contract MAMarketplace is MAAuction {
         uint64 tokenId,
         uint128 pricePerOne,
         uint128 amount
-    ) external whenNotPaused {
+    )
+        external
+        whenNotPaused
+    {
         Lot storage item = _getLot(tokenId, _nft1155Address);
         if (item.isAuction)
             revert CannotListItemIfAuctionExists();
@@ -46,12 +80,7 @@ contract MAMarketplace is MAAuction {
             pricePerOne, //use new price for all
             item.amount + amount //increase amount
         );
-        _transferERC1155Tokens(
-            msg.sender,
-            address(this),
-            tokenId,
-            amount
-        );
+        _transferERC1155Tokens(msg.sender, address(this), tokenId, amount);
     }
 
     /// @notice buy ERC721 item
@@ -66,12 +95,7 @@ contract MAMarketplace is MAAuction {
         whenNotPaused
     {
         _buyItemWithAmount(tokenId, _nft1155Address, amount);
-        _transferERC1155Tokens(
-            address(this),
-            msg.sender,
-            tokenId,
-            amount
-        );
+        _transferERC1155Tokens(address(this), msg.sender, tokenId, amount);
     }
 
     /// @notice cancel selling of ERC721 item
@@ -83,12 +107,7 @@ contract MAMarketplace is MAAuction {
     /// @notice cancel selling of ERC1155 item
     function cancelItemWithAmount(uint64 tokenId) external whenNotPaused {
         (address recipient, uint128 amount) = _cancel(tokenId, _nft1155Address);
-        _transferERC1155Tokens(
-            address(this),
-            recipient,
-            tokenId,
-            amount
-        );
+        _transferERC1155Tokens(address(this), recipient, tokenId, amount);
     }
 
     //########################### Private #####################################
@@ -100,6 +119,7 @@ contract MAMarketplace is MAAuction {
         uint128 amount // = 0 for ERC721
     ) private {
         _setLotWithAmount(tokenId, token, msg.sender, pricePerOne, amount);
+        _emitsItemListed(false, tokenId, token, pricePerOne, amount);
     }
 
     function _buyItemWithAmount(
@@ -126,6 +146,16 @@ contract MAMarketplace is MAAuction {
             ? item.startPrice * amount
             : item.startPrice;
         _transferExchangeTokens(msg.sender, item.seller, exchangeTokenAmount);
+
+        emit Sold(
+            token,
+            item.seller,
+            msg.sender,
+            uint64(block.timestamp),
+            tokenId,
+            item.startPrice,
+            amount
+        );
     }
 
     function _cancel(uint64 tokenId, address token)
@@ -135,6 +165,9 @@ contract MAMarketplace is MAAuction {
         Lot memory item = _checkIfExists(tokenId, token);
         require(msg.sender == item.seller, "MAMarketplace: no access");
         _resetLot(tokenId, token);
+
+        emit Cancelled(token, item.seller, tokenId, uint64(block.timestamp));
+
         return (item.seller, item.amount);
     }
 

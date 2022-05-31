@@ -15,8 +15,26 @@ contract MAStorage is MAMAdmin {
         uint128 amount;
     }
 
+    event ItemListed(
+        address indexed owner,
+        address indexed token,
+        uint64 indexed tokenId,
+        uint128 price,
+        uint128 amount,
+        uint64 date,
+        bool auction
+    );
+
     //TokenId => Lot info
     mapping(address => mapping(uint64 => Lot)) private _lots;
+
+    function _getLot(uint64 tokenId, address token)
+        internal
+        view
+        returns (Lot storage)
+    {
+        return _lots[token][tokenId];
+    }
 
     function _checkIfNotExists(uint64 tokenId, address token) internal view {
         require(
@@ -52,21 +70,24 @@ contract MAStorage is MAMAdmin {
     }
 
     function _resetLot(uint64 tokenId, address token) internal virtual {
-        Lot storage startBid = _setLotWithAmount(
-            tokenId,
-            token,
-            address(0),
-            0,
-            0
-        );
-        startBid.startDate = 0;
+        delete _lots[token][tokenId];
     }
 
-    function _getLot(uint64 tokenId, address token)
-        internal
-        view
-        returns (Lot storage)
-    {
-        return _lots[token][tokenId];
+    function _emitsItemListed(
+        bool auction,
+        uint64 tokenId,
+        address token,
+        uint128 price,
+        uint128 amount
+    ) internal {
+        emit ItemListed(
+            msg.sender,
+            token,
+            tokenId,
+            price,
+            amount,
+            uint64(block.timestamp),
+            auction
+        );
     }
 }

@@ -1,7 +1,7 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
-import { BigNumber } from "ethers";
 import { ethers } from "hardhat";
+import { setTimeInBlockchain } from "../scripts/misc";
 import { MAERC1155, MAERC721, MAMarketplace } from "../typechain-types/contracts";
 import { IMintableERC20 } from "../typechain-types/contracts/IMintableERC20";
 const maerc20 = require("../required-data/MAERC20.json");
@@ -33,11 +33,11 @@ describe("MA Marketplace", () => {
 
         const factory1155 = await ethers.getContractFactory("MAERC1155", owner);
         erc1155 = await factory1155.deploy();
-        const factory20 = 
+        const factory20 =
             await ethers.getContractFactory(maerc20.abi, maerc20.bytecode, owner);
         await erc1155.setMinter(owner.address);
         await erc1155.mint(owner.address, tokenId, defaultErc1155Amount, []);
-        
+
         erc20 = await factory20.deploy("test", "test") as IMintableERC20;
 
         const factory = await ethers.getContractFactory("MAMarketplace", owner);
@@ -91,6 +91,38 @@ describe("MA Marketplace", () => {
             const amountAfter = await erc1155.balanceOf(owner.address, tokenId);
 
             expect(amountAfter).eq(amountBefore.add(amount));
+        });
+
+        it("should emit event for nft-721", async () => {
+            await erc721.setMinter(contract.address);
+            const nextTimestamp = await setTimeInBlockchain();
+            const tx = contract.createItem(123, owner.address);
+
+            await expect(tx).to.emit(contract, "ItemCreated")
+                .withArgs(
+                    owner.address,
+                    erc721.address,
+                    123,
+                    nextTimestamp,
+                    0
+                );
+        });
+
+        it("should emit event for nft-1155", async () => {
+            await erc1155.setMinter(contract.address);
+            const amount = 10;
+
+            const nextTimestamp = await setTimeInBlockchain();
+            const tx = contract.createItemWithAmount(tokenId, owner.address, amount);
+
+            await expect(tx).to.emit(contract, "ItemCreated")
+                .withArgs(
+                    owner.address,
+                    erc1155.address,
+                    tokenId,
+                    nextTimestamp,
+                    amount
+                );
         });
     });
 
@@ -180,6 +212,41 @@ describe("MA Marketplace", () => {
 
             await expect(tx).to.be.revertedWith("CannotListItemIfAuctionExists");
         });
+
+        it("should emit event for nft-721", async () => {
+            const price = 100;
+            const nextTimestamp = await setTimeInBlockchain();
+            const tx = contract.listItem(tokenId, price);
+
+            await expect(tx).to.emit(contract, "ItemListed")
+                .withArgs(
+                    owner.address, 
+                    erc721.address, 
+                    tokenId, 
+                    price, 
+                    0, //amount
+                    nextTimestamp, 
+                    false
+                );
+        });
+
+        it("should emit event for nft-1155", async () => {
+            const price = 100;
+            const amount = 10;
+            const nextTimestamp = await setTimeInBlockchain();
+            const tx = contract.listItemWithAmount(tokenId, price, amount);
+            
+            await expect(tx).to.emit(contract, "ItemListed")
+                .withArgs(
+                    owner.address,
+                    erc1155.address,
+                    tokenId,
+                    price,
+                    amount,
+                    nextTimestamp,
+                    false
+                );
+        });
     });
 
     describe("buy item", () => {
@@ -211,7 +278,7 @@ describe("MA Marketplace", () => {
             const tx = contract.connect(buyer1).buyItemWithAmount(tokenId, amount + 1);
             await expect(tx).to.be.revertedWith("MAMarketplace: wrong amount");
         });
-        
+
         it("should reset info if amount equals the listed one for nft-721", async () => {
             const price = 100;
             const amount = 1;
@@ -251,7 +318,7 @@ describe("MA Marketplace", () => {
         it("should transfer erc20 to owner for nft-721", async () => {
             const price = 100;
             await contract.listItem(tokenId, price);
-            
+
             const amountBefore = await erc20.balanceOf(owner.address);
             await contract.connect(buyer1).buyItem(tokenId);
             const amountAfter = await erc20.balanceOf(owner.address);
@@ -267,12 +334,11 @@ describe("MA Marketplace", () => {
             await contract.connect(buyer1).buyItemWithAmount(tokenId, amount);
             const amountAfter = await erc20.balanceOf(owner.address);
 
-            expect(amountAfter).eq(amountBefore.add(amount*price));
+            expect(amountAfter).eq(amountBefore.add(amount * price));
         });
 
         it("should transfer token to buyer for nft-721", async () => {
             const price = 100;
-            const amount = 1;
             await contract.listItem(tokenId, price);
             await contract.connect(buyer1).buyItem(tokenId);
 
@@ -292,6 +358,45 @@ describe("MA Marketplace", () => {
             const balanceAfter =
                 await erc1155.balanceOf(buyer1.address, tokenId);
             expect(balanceAfter).eq(balanceBefore.add(amount));
+        });
+
+        it("should emit event for nft-721", async () => {
+            const price = 100;
+
+            await contract.listItem(tokenId, price);
+            const nextTimestamp = await setTimeInBlockchain();
+            const tx = contract.connect(buyer1).buyItem(tokenId);
+
+            await expect(tx).to.emit(contract, "Sold")
+                .withArgs(
+                    erc721.address,
+                    owner.address,
+                    buyer1.address,
+                    nextTimestamp,
+                    tokenId,
+                    price,
+                    0 //amount
+                );
+        });
+
+        it("should emit event for nft-1155", async () => {
+            const price = 100;
+            const amount = 10;
+
+            await contract.listItemWithAmount(tokenId, price, amount);
+            const nextTimestamp = await setTimeInBlockchain();
+            const tx = contract.connect(buyer1).buyItemWithAmount(tokenId, amount);
+
+            await expect(tx).to.emit(contract, "Sold")
+                .withArgs(
+                    erc1155.address,
+                    owner.address,
+                    buyer1.address,
+                    nextTimestamp,
+                    tokenId,
+                    price,
+                    amount
+                );
         });
     });
 
@@ -375,6 +480,39 @@ describe("MA Marketplace", () => {
             const balanceAfter =
                 await erc1155.balanceOf(owner.address, tokenId);
             expect(balanceAfter).eq(balanceBefore.add(amount));
+        });
+
+        it("should emit event for nft-721", async () => {
+            const price = 100;
+
+            await contract.listItem(tokenId, price);
+            const nextTimestamp = await setTimeInBlockchain();
+            const tx = contract.cancelItem(tokenId);
+
+            await expect(tx).to.emit(contract, "Cancelled")
+                .withArgs(
+                    erc721.address,
+                    owner.address,
+                    tokenId,
+                    nextTimestamp
+                );
+        });
+
+        it("should emit event for nft-1155", async () => {
+            const price = 100;
+            const amount = 10;
+
+            await contract.listItemWithAmount(tokenId, price, amount);
+            const nextTimestamp = await setTimeInBlockchain();
+            const tx = contract.cancelItemWithAmount(tokenId);
+
+            await expect(tx).to.emit(contract, "Cancelled")
+                .withArgs(
+                    erc1155.address,
+                    owner.address,
+                    tokenId,
+                    nextTimestamp
+                );
         });
     });
 });

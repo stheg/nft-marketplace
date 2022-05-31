@@ -7,6 +7,23 @@ import "./MAStorage.sol";
 /// @notice Provides auction functionality
 /// @dev Defines functions to list items, make bids and finish auctions
 contract MAAuction is MAStorage {
+    event NewBid(
+        uint64 date,
+        address indexed bidder,
+        address indexed token,
+        uint64 indexed tokenId,
+        uint128 newPrice
+    );
+
+    event AuctionFinished(
+        uint64 date,
+        address indexed recipient,
+        address indexed token,
+        uint64 indexed tokenId,
+        uint128 nftAmount,
+        uint128 finishPrice
+    );
+
     struct Bid {
         address bidder;
         uint64 no;
@@ -74,7 +91,7 @@ contract MAAuction is MAStorage {
 
     /// @notice Finishes or cancels the auction for ERC721
     function finishAuction(uint64 tokenId) external whenNotPaused {
-        (address recipient, ) = _finishAuction(tokenId, _nft721Address);
+        (address recipient,) = _finishAuction(tokenId, _nft721Address);
         _transferERC721Tokens(address(this), recipient, tokenId);
     }
 
@@ -88,12 +105,7 @@ contract MAAuction is MAStorage {
             _nft1155Address
         );
 
-        _transferERC1155Tokens(
-            address(this),
-            recipient,
-            tokenId,
-            amount
-        );
+        _transferERC1155Tokens(address(this), recipient, tokenId, amount);
     }
 
     //###################### Internal Overriden ###############################
@@ -103,8 +115,7 @@ contract MAAuction is MAStorage {
         virtual
         override
     {
-        Bid storage bid = _updateBid(tokenId, token, address(0), 0);
-        bid.no = 0;
+        delete _bids[token][tokenId];
         super._resetLot(tokenId, token);
     }
 
@@ -117,7 +128,16 @@ contract MAAuction is MAStorage {
         uint128 amount
     ) private {
         _checkIfNotExists(tokenId, token);
-        _setLotWithAmount(tokenId, token, msg.sender, startPrice, amount);
+        Lot storage lot = _setLotWithAmount(
+            tokenId,
+            token,
+            msg.sender,
+            startPrice,
+            amount
+        );
+        lot.isAuction = true;
+
+        _emitsItemListed(true, tokenId, token, startPrice, amount);
     }
 
     function _makeBid(
@@ -142,6 +162,8 @@ contract MAAuction is MAStorage {
             ? price - lastBid.value
             : price;
         _transferExchangeTokens(msg.sender, address(this), exchangeValue);
+
+        emit NewBid(uint64(block.timestamp), msg.sender, token, tokenId, price);
 
         if (msg.sender == lastBid.bidder) return;
         if (lastBid.bidder == address(0)) return;
@@ -174,6 +196,15 @@ contract MAAuction is MAStorage {
         }
 
         _transferExchangeTokens(erc20Recipient, lastBid.value);
+
+        emit AuctionFinished(
+            uint64(block.timestamp),
+            nftRecipient,
+            token,
+            tokenId,
+            lot.amount,
+            lastBid.value
+        );
 
         return (nftRecipient, lot.amount);
     }
