@@ -142,7 +142,7 @@ describe("MA Marketplace", () => {
         it("should revert if already exists for nft-721", async () => {
             await contract.listItem(tokenId, 1);
             const tx = contract.listItem(tokenId, 1);
-            await expect(tx).to.be.revertedWith("MAStorage: nft already listed");
+            await expect(tx).to.be.revertedWith("MAStorage: lot already listed");
         });
 
         it("should set new price, but increase amount if already exists for nft-1155", async () => {
@@ -150,25 +150,23 @@ describe("MA Marketplace", () => {
             const amount1 = 10;
             await contract.listItemWithAmount(tokenId, price1, amount1);
             const [item1, lastBid1] =
-                await contract.getDetailsForItemWithAmount(tokenId);
+                await contract.getDetailsForItem(tokenId, erc1155.address, owner.address);
 
             const price2 = 99;
             const amount2 = 1;
             await contract.listItemWithAmount(tokenId, price2, amount2);
             const [item, lastBid] =
-                await contract.getDetailsForItemWithAmount(tokenId);
+                await contract.getDetailsForItem(tokenId, erc1155.address, owner.address);
             expect(item.startPrice).eq(price2);
             expect(item.amount).eq(amount1 + amount2);
-            expect(item.seller).eq(owner.address);
             expect(item.startDate.gt(item1.startDate)).eq(true);
         });
 
         it("should list item for nft-721", async () => {
             const price = 100;
             await contract.listItem(tokenId, price);
-            const [item, lastBid] = await contract.getDetailsForItem(tokenId);
+            const [item, lastBid] = await contract.getDetailsForItem(tokenId, erc721.address, owner.address);
             expect(item.startPrice).eq(price);
-            expect(item.seller).eq(owner.address);
         });
 
         it("should list item for nft-1155", async () => {
@@ -176,10 +174,9 @@ describe("MA Marketplace", () => {
             const amount = 10;
             await contract.listItemWithAmount(tokenId, price, amount);
             const [item, lastBid] =
-                await contract.getDetailsForItemWithAmount(tokenId);
+                await contract.getDetailsForItem(tokenId, erc1155.address, owner.address);
             expect(item.startPrice).eq(price);
             expect(item.amount).eq(amount);
-            expect(item.seller).eq(owner.address);
         });
 
         it("should transfer token from owner for nft-721", async () => {
@@ -247,35 +244,58 @@ describe("MA Marketplace", () => {
                     false
                 );
         });
+
+        it("should work for different owners nft-1155", async () => {
+            const [price1, price2] = [100, 101];
+            const [amount1, amount2] = [10, 5];
+            const [seller1, seller2] = [buyer1, buyer2];
+            
+            await erc1155.mint(seller1.address, tokenId, amount1, []);
+            await erc1155.connect(seller1).setApprovalForAll(contract.address, true);
+            await erc1155.mint(seller2.address, tokenId, amount2, []);
+            await erc1155.connect(seller2).setApprovalForAll(contract.address, true);
+
+            await contract.connect(seller1).listItemWithAmount(tokenId, price1, amount1);
+            await contract.connect(seller2).listItemWithAmount(tokenId, price2, amount2);
+            const [item1, lastBid1] =
+                await contract.getDetailsForItem(tokenId, erc1155.address, seller1.address);
+            const [item2, lastBid2] =
+                await contract.getDetailsForItem(tokenId, erc1155.address, seller2.address);
+
+            expect(item1.startPrice).eq(price1);
+            expect(item2.startPrice).eq(price2);
+            expect(item1.amount).eq(amount1);
+            expect(item2.amount).eq(amount2);
+        });
     });
 
     describe("buy item", () => {
         it("should revert if called when paused for nft-721", async () => {
             await contract.pause();
-            const tx = contract.connect(buyer1).buyItem(tokenId);
+            const tx = contract.connect(buyer1).buyItem(tokenId, owner.address);
             await expect(tx).to.be.reverted;
         });
 
         it("should revert if called when paused for nft-1155", async () => {
             await contract.pause();
-            const tx = contract.connect(buyer1).buyItemWithAmount(tokenId, 1);
+            const tx = contract.connect(buyer1).buyItemWithAmount(tokenId, owner.address, 1);
             await expect(tx).to.be.reverted;
         });
 
         it("should revert if not exists for nft-721", async () => {
-            const tx = contract.connect(buyer1).buyItem(tokenId);
-            await expect(tx).to.be.revertedWith("MAStorage: no such nft");
+            const tx = contract.connect(buyer1).buyItem(tokenId, owner.address);
+            await expect(tx).to.be.revertedWith("MAStorage: no such lot");
         });
 
         it("should revert if not exists for nft-1155", async () => {
-            const tx = contract.connect(buyer1).buyItemWithAmount(tokenId, 100);
-            await expect(tx).to.be.revertedWith("MAStorage: no such nft");
+            const tx = contract.connect(buyer1).buyItemWithAmount(tokenId, owner.address, 100);
+            await expect(tx).to.be.revertedWith("MAStorage: no such lot");
         });
 
         it("should revert if exceeds listed amount for nft-1155", async () => {
             const amount = 10;
             await contract.listItemWithAmount(tokenId, 100, amount);
-            const tx = contract.connect(buyer1).buyItemWithAmount(tokenId, amount + 1);
+            const tx = contract.connect(buyer1).buyItemWithAmount(tokenId, owner.address, amount + 1);
             await expect(tx).to.be.revertedWith("MAMarketplace: wrong amount");
         });
 
@@ -283,23 +303,21 @@ describe("MA Marketplace", () => {
             const price = 100;
             const amount = 1;
             await contract.listItem(tokenId, price);
-            await contract.connect(buyer1).buyItem(tokenId);
-            const [item, lastBid] = await contract.getDetailsForItem(tokenId);
+            await contract.connect(buyer1).buyItem(tokenId, owner.address);
+            const [item, lastBid] = await contract.getDetailsForItem(tokenId, erc721.address, owner.address);
             expect(item.startPrice).eq(0);
             expect(item.amount).eq(0);
-            expect(item.seller).eq(ethers.constants.AddressZero);
         });
 
         it("should reset info if amount equals the listed one for nft-1155", async () => {
             const price = 100;
             const amount = 10;
             await contract.listItemWithAmount(tokenId, price, amount);
-            await contract.connect(buyer1).buyItemWithAmount(tokenId, amount);
+            await contract.connect(buyer1).buyItemWithAmount(tokenId, owner.address, amount);
             const [item, lastBid] =
-                await contract.getDetailsForItemWithAmount(tokenId);
+                await contract.getDetailsForItem(tokenId, erc1155.address, owner.address);
             expect(item.startPrice).eq(0);
             expect(item.amount).eq(0);
-            expect(item.seller).eq(ethers.constants.AddressZero);
         });
 
         it("should update info if amount less than the listed one for nft-1155", async () => {
@@ -307,12 +325,11 @@ describe("MA Marketplace", () => {
             const amount = 10;
             await contract.listItemWithAmount(tokenId, price, amount);
             const buyAmount = amount - 4;
-            await contract.connect(buyer1).buyItemWithAmount(tokenId, buyAmount);
+            await contract.connect(buyer1).buyItemWithAmount(tokenId, owner.address, buyAmount);
             const [item, lastBid] =
-                await contract.getDetailsForItemWithAmount(tokenId);
+                await contract.getDetailsForItem(tokenId, erc1155.address, owner.address);
             expect(item.startPrice).eq(price);
             expect(item.amount).eq(amount - buyAmount);
-            expect(item.seller).eq(owner.address);
         });
 
         it("should transfer erc20 to owner for nft-721", async () => {
@@ -320,7 +337,7 @@ describe("MA Marketplace", () => {
             await contract.listItem(tokenId, price);
 
             const amountBefore = await erc20.balanceOf(owner.address);
-            await contract.connect(buyer1).buyItem(tokenId);
+            await contract.connect(buyer1).buyItem(tokenId, owner.address);
             const amountAfter = await erc20.balanceOf(owner.address);
             expect(amountAfter).eq(amountBefore.add(price));
         });
@@ -331,7 +348,7 @@ describe("MA Marketplace", () => {
 
             await contract.listItemWithAmount(tokenId, price, amount);
             const amountBefore = await erc20.balanceOf(owner.address);
-            await contract.connect(buyer1).buyItemWithAmount(tokenId, amount);
+            await contract.connect(buyer1).buyItemWithAmount(tokenId, owner.address, amount);
             const amountAfter = await erc20.balanceOf(owner.address);
 
             expect(amountAfter).eq(amountBefore.add(amount * price));
@@ -340,7 +357,7 @@ describe("MA Marketplace", () => {
         it("should transfer token to buyer for nft-721", async () => {
             const price = 100;
             await contract.listItem(tokenId, price);
-            await contract.connect(buyer1).buyItem(tokenId);
+            await contract.connect(buyer1).buyItem(tokenId, owner.address);
 
             const newOwner = await erc721.ownerOf(tokenId);
             expect(newOwner).eq(buyer1.address);
@@ -353,7 +370,7 @@ describe("MA Marketplace", () => {
                 await erc1155.balanceOf(buyer1.address, tokenId);
 
             await contract.listItemWithAmount(tokenId, price, amount);
-            await contract.connect(buyer1).buyItemWithAmount(tokenId, amount);
+            await contract.connect(buyer1).buyItemWithAmount(tokenId, owner.address, amount);
 
             const balanceAfter =
                 await erc1155.balanceOf(buyer1.address, tokenId);
@@ -365,7 +382,7 @@ describe("MA Marketplace", () => {
 
             await contract.listItem(tokenId, price);
             const nextTimestamp = await setTimeInBlockchain();
-            const tx = contract.connect(buyer1).buyItem(tokenId);
+            const tx = contract.connect(buyer1).buyItem(tokenId, owner.address);
 
             await expect(tx).to.emit(contract, "Sold")
                 .withArgs(
@@ -385,7 +402,7 @@ describe("MA Marketplace", () => {
 
             await contract.listItemWithAmount(tokenId, price, amount);
             const nextTimestamp = await setTimeInBlockchain();
-            const tx = contract.connect(buyer1).buyItemWithAmount(tokenId, amount);
+            const tx = contract.connect(buyer1).buyItemWithAmount(tokenId, owner.address, amount);
 
             await expect(tx).to.emit(contract, "Sold")
                 .withArgs(
@@ -415,24 +432,24 @@ describe("MA Marketplace", () => {
 
         it("should revert if not exists for nft-721", async () => {
             const tx = contract.cancelItem(tokenId);
-            await expect(tx).to.be.revertedWith("MAStorage: no such nft");
+            await expect(tx).to.be.revertedWith("MAStorage: no such lot");
         });
 
         it("should revert if not exists for nft-1155", async () => {
             const tx = contract.cancelItemWithAmount(tokenId);
-            await expect(tx).to.be.revertedWith("MAStorage: no such nft");
+            await expect(tx).to.be.revertedWith("MAStorage: no such lot");
         });
 
-        it("should revert if not seller for nft-721", async () => {
+        it("should revert if nothing to cancel for nft-721", async () => {
             await contract.listItem(tokenId, 10);
             const tx = contract.connect(buyer1).cancelItem(tokenId);
-            await expect(tx).to.be.revertedWith("MAMarketplace: no access");
+            await expect(tx).to.be.revertedWith("MAStorage: no such lot");
         });
 
-        it("should revert if not seller for nft-1155", async () => {
+        it("should revert if nothing to cancel for nft-1155", async () => {
             await contract.listItemWithAmount(tokenId, 10, 5);
             const tx = contract.connect(buyer1).cancelItemWithAmount(tokenId);
-            await expect(tx).to.be.revertedWith("MAMarketplace: no access");
+            await expect(tx).to.be.revertedWith("MAStorage: no such lot");
         });
 
         it("should reset info for nft-721", async () => {
@@ -440,10 +457,10 @@ describe("MA Marketplace", () => {
             await contract.cancelItem(tokenId);
 
             const [item, lastBid] =
-                await contract.getDetailsForItem(tokenId);
+                await contract.getDetailsForItem(tokenId, erc721.address, owner.address);
             expect(item.startPrice).eq(0);
             expect(item.amount).eq(0);
-            expect(item.seller).eq(ethers.constants.AddressZero);
+            expect(item.startDate).eq(0);
         });
 
         it("should reset info for nft-1155", async () => {
@@ -451,10 +468,10 @@ describe("MA Marketplace", () => {
             await contract.cancelItemWithAmount(tokenId);
 
             const [item, lastBid] =
-                await contract.getDetailsForItemWithAmount(tokenId);
+                await contract.getDetailsForItem(tokenId, erc1155.address, owner.address);
             expect(item.startPrice).eq(0);
             expect(item.amount).eq(0);
-            expect(item.seller).eq(ethers.constants.AddressZero);
+            expect(item.startDate).eq(0);
         });
 
         it("should transfer token back to owner for nft-721", async () => {

@@ -67,12 +67,12 @@ task("test-setup", "Performs setup of marketplace and test cases")
         console.log("list item");
         await contract.listItem(tokenId, price1);
         console.log("buy item");
-        await contract.connect(buyer1).buyItem(tokenId);
+        await contract.connect(buyer1).buyItem(tokenId, owner.address);
         
         console.log("list on auction");
         await contract.listItemWithAmountOnAuction(tokenId, price1, amount);
         console.log("bid 1");
-        await contract.connect(buyer1).makeBidForItemWithAmount(tokenId, price1);
+        await contract.connect(buyer1).makeBidForItemWithAmount(tokenId, owner.address, price1);
         console.log("bid 2");
-        await contract.connect(buyer2).makeBidForItemWithAmount(tokenId, price2);
+        await contract.connect(buyer2).makeBidForItemWithAmount(tokenId, owner.address, price2);
     });

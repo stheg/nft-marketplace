@@ -83,9 +83,8 @@ describe("MA Auction", () => {
         it("should work for nft-721", async () => {
             const startPrice = 100;
             await contract.listItemOnAuction(tokenId, startPrice);
-            const [lot, lastBid] = await contract.getDetailsForItem(tokenId);
+            const [lot, lastBid] = await contract.getDetailsForItem(tokenId, erc721.address, owner.address);
             expect(lot.startPrice).eq(startPrice);
-            expect(lot.seller).eq(owner.address);
             expect(lastBid.bidder).eq(ethers.constants.AddressZero);
             expect(lastBid.value).eq(0);
             expect(lastBid.no).eq(0);
@@ -104,10 +103,9 @@ describe("MA Auction", () => {
             const startPrice = 100;
             const amount = 2;
             await contract.listItemWithAmountOnAuction(tokenId, startPrice, amount);
-            const [lot, lastBid] = await contract.getDetailsForItemWithAmount(tokenId);
+            const [lot, lastBid] = await contract.getDetailsForItem(tokenId, erc1155.address, owner.address);
             expect(lot.startPrice).eq(startPrice);
             expect(lot.amount).eq(amount);
-            expect(lot.seller).eq(owner.address);
             expect(lastBid.bidder).eq(ethers.constants.AddressZero);
             expect(lastBid.value).eq(0);
             expect(lastBid.no).eq(0);
@@ -174,7 +172,7 @@ describe("MA Auction", () => {
             await contract.listItemOnAuction(tokenId, startPrice);
             
             const tx = contract.listItemOnAuction(tokenId, startPrice);
-            await expect(tx).to.be.revertedWith("MAStorage: nft already listed");
+            await expect(tx).to.be.revertedWith("MAStorage: lot already listed");
         });
 
         it("should revert if lot for nft-1155 already listed", async () => {
@@ -190,41 +188,41 @@ describe("MA Auction", () => {
                 startPrice, 
                 amount
             );
-            await expect(tx).to.be.revertedWith("MAStorage: nft already listed");
+            await expect(tx).to.be.revertedWith("MAStorage: lot already listed");
         });
     });
 
     describe("make bid", () => {
         it("should revert for nft-721 if called when paused", async () => {
             await contract.pause();
-            const tx = contract.makeBid(tokenId, 1);
+            const tx = contract.makeBid(tokenId, owner.address, 1);
             await expect(tx).to.be.reverted;
         });
 
         it("should revert for nft-1155 if called when paused", async () => {
             await contract.pause();
-            const tx = contract.makeBidForItemWithAmount(tokenId, 1);
+            const tx = contract.makeBidForItemWithAmount(tokenId, owner.address, 1);
             await expect(tx).to.be.reverted;
         });
 
         it("should revert for nft-721 if no such lot", async () => {
             const startPrice = 100;
-            const tx = contract.connect(bidder1).makeBid(tokenId, startPrice + 1);
-            await expect(tx).to.be.revertedWith("MAStorage: no such nft");
+            const tx = contract.connect(bidder1).makeBid(tokenId, owner.address, startPrice + 1);
+            await expect(tx).to.be.revertedWith("MAStorage: no such lot");
         });
 
         it("should revert for nft-1155 if no such lot", async () => {
             const startPrice = 100;
             const tx = contract.connect(bidder1)
-                .makeBidForItemWithAmount(tokenId, startPrice + 1);
-            await expect(tx).to.be.revertedWith("MAStorage: no such nft");
+                .makeBidForItemWithAmount(tokenId, owner.address, startPrice + 1);
+            await expect(tx).to.be.revertedWith("MAStorage: no such lot");
         });
 
         it("should revert for nft-721 if auction has ended", async () => {
             const startPrice = 100;
             await contract.listItemOnAuction(tokenId, startPrice);
             await delay(auctionDuration);
-            const tx = contract.connect(bidder1).makeBid(tokenId, startPrice + 1);
+            const tx = contract.connect(bidder1).makeBid(tokenId, owner.address, startPrice + 1);
             await expect(tx).to.be.revertedWith("MAAuction: auction has ended");
         });
 
@@ -233,14 +231,14 @@ describe("MA Auction", () => {
             await contract.listItemWithAmountOnAuction(tokenId, startPrice, 10);
             await delay(auctionDuration);
             const tx = contract.connect(bidder1)
-                .makeBidForItemWithAmount(tokenId, startPrice + 1);
+                .makeBidForItemWithAmount(tokenId, owner.address, startPrice + 1);
             await expect(tx).to.be.revertedWith("MAAuction: auction has ended");
         });
 
         it("should revert for nft-721 if wrong price", async () => {
             const startPrice = 100;
             await contract.listItemOnAuction(tokenId, startPrice);
-            const tx = contract.connect(bidder1).makeBid(tokenId, startPrice - 1);
+            const tx = contract.connect(bidder1).makeBid(tokenId, owner.address, startPrice - 1);
             await expect(tx).to.be.revertedWith("MAAuction: incorrect bid price");
         });
 
@@ -248,15 +246,15 @@ describe("MA Auction", () => {
             const startPrice = 100;
             await contract.listItemWithAmountOnAuction(tokenId, startPrice, 10);
             const tx = contract.connect(bidder1)
-                .makeBidForItemWithAmount(tokenId, startPrice - 1);
+                .makeBidForItemWithAmount(tokenId, owner.address, startPrice - 1);
             await expect(tx).to.be.revertedWith("MAAuction: incorrect bid price");
         });
 
         it("should add a new bid for nft-721", async () => {
             const startPrice = 100;
             await contract.listItemOnAuction(tokenId, startPrice);
-            await contract.connect(bidder1).makeBid(tokenId, startPrice);
-            const [lot, lastBid] = await contract.getDetailsForItem(tokenId);
+            await contract.connect(bidder1).makeBid(tokenId, owner.address, startPrice);
+            const [lot, lastBid] = await contract.getDetailsForItem(tokenId, erc721.address, owner.address);
             expect(lastBid.value).eq(startPrice);
             expect(lastBid.bidder).eq(bidder1.address);
             expect(lastBid.no).eq(1);
@@ -267,10 +265,11 @@ describe("MA Auction", () => {
             await contract.listItemWithAmountOnAuction(tokenId, startPrice, 10);
             await contract.connect(bidder1).makeBidForItemWithAmount(
                 tokenId,
+                owner.address,
                 startPrice
             );
             const [lot, lastBid] =
-                await contract.getDetailsForItemWithAmount(tokenId);
+                await contract.getDetailsForItem(tokenId, erc1155.address, owner.address);
             expect(lastBid.value).eq(startPrice);
             expect(lastBid.bidder).eq(bidder1.address);
             expect(lastBid.no).eq(1);
@@ -279,7 +278,7 @@ describe("MA Auction", () => {
         it("should transfer erc20 from bidder for nft-721", async () => {
             const startPrice = 100;
             await contract.listItemOnAuction(tokenId, startPrice);
-            await contract.connect(bidder1).makeBid(tokenId, startPrice);
+            await contract.connect(bidder1).makeBid(tokenId, owner.address, startPrice);
             const erc20BidderAmount = await erc20.balanceOf(bidder1.address);
             const erc20ContractAmount = await erc20.balanceOf(contract.address);
             expect(erc20BidderAmount).eq(defaultErc20Amount - startPrice);
@@ -289,7 +288,7 @@ describe("MA Auction", () => {
         it("should transfer erc20 from bidder for nft-1155", async () => {
             const startPrice = 100;
             await contract.listItemWithAmountOnAuction(tokenId, startPrice, 10);
-            await contract.connect(bidder1).makeBidForItemWithAmount(tokenId, startPrice);
+            await contract.connect(bidder1).makeBidForItemWithAmount(tokenId, owner.address, startPrice);
             const erc20BidderAmount = await erc20.balanceOf(bidder1.address);
             const erc20ContractAmount = await erc20.balanceOf(contract.address);
             expect(erc20BidderAmount).eq(defaultErc20Amount - startPrice);
@@ -299,8 +298,8 @@ describe("MA Auction", () => {
         it("should transfer extra erc20 from the same bidder for nft-721", async () => {
             const startPrice = 100;
             await contract.listItemOnAuction(tokenId, startPrice);
-            await contract.connect(bidder1).makeBid(tokenId, startPrice);
-            await contract.connect(bidder1).makeBid(tokenId, startPrice+10);
+            await contract.connect(bidder1).makeBid(tokenId, owner.address, startPrice);
+            await contract.connect(bidder1).makeBid(tokenId, owner.address, startPrice+10);
             const erc20BidderAmount = await erc20.balanceOf(bidder1.address);
             const erc20ContractAmount = await erc20.balanceOf(contract.address);
             expect(erc20BidderAmount).eq(defaultErc20Amount - startPrice - 10);
@@ -310,8 +309,8 @@ describe("MA Auction", () => {
         it("should transfer erc20 from the same bidder for nft-1155", async () => {
             const startPrice = 100;
             await contract.listItemWithAmountOnAuction(tokenId, startPrice, 10);
-            await contract.connect(bidder1).makeBidForItemWithAmount(tokenId, startPrice);
-            await contract.connect(bidder1).makeBidForItemWithAmount(tokenId, startPrice + 10);
+            await contract.connect(bidder1).makeBidForItemWithAmount(tokenId, owner.address, startPrice);
+            await contract.connect(bidder1).makeBidForItemWithAmount(tokenId, owner.address, startPrice + 10);
             const erc20BidderAmount = await erc20.balanceOf(bidder1.address);
             const erc20ContractAmount = await erc20.balanceOf(contract.address);
             expect(erc20BidderAmount).eq(defaultErc20Amount - startPrice - 10);
@@ -321,24 +320,24 @@ describe("MA Auction", () => {
         it("should revert if second bid's price the same for nft-721", async () => {
             const startPrice = 100;
             await contract.listItemOnAuction(tokenId, startPrice);
-            await contract.connect(bidder1).makeBid(tokenId, startPrice);
-            const tx = contract.connect(bidder1).makeBid(tokenId, startPrice);
+            await contract.connect(bidder1).makeBid(tokenId, owner.address, startPrice);
+            const tx = contract.connect(bidder1).makeBid(tokenId, owner.address, startPrice);
             await expect(tx).to.be.revertedWith("MAAuction: incorrect bid price");
         });
 
         it("should revert if second bid's price the same for nft-1155", async () => {
             const startPrice = 100;
             await contract.listItemWithAmountOnAuction(tokenId, startPrice, 10);
-            await contract.connect(bidder1).makeBidForItemWithAmount(tokenId, startPrice);
-            const tx = contract.connect(bidder1).makeBidForItemWithAmount(tokenId, startPrice);
+            await contract.connect(bidder1).makeBidForItemWithAmount(tokenId, owner.address, startPrice);
+            const tx = contract.connect(bidder1).makeBidForItemWithAmount(tokenId, owner.address, startPrice);
             await expect(tx).to.be.revertedWith("MAAuction: incorrect bid price");
         });
 
         it("should change erc20 balances for bidders for nft-721", async () => {
             const startPrice = 100;
             await contract.listItemOnAuction(tokenId, startPrice);
-            await contract.connect(bidder1).makeBid(tokenId, startPrice);
-            await contract.connect(bidder2).makeBid(tokenId, startPrice + 10);
+            await contract.connect(bidder1).makeBid(tokenId, owner.address, startPrice);
+            await contract.connect(bidder2).makeBid(tokenId, owner.address, startPrice + 10);
             const erc20Bidder1Amount = await erc20.balanceOf(bidder1.address);
             const erc20Bidder2Amount = await erc20.balanceOf(bidder2.address);
             const erc20ContractAmount = await erc20.balanceOf(contract.address);
@@ -350,8 +349,8 @@ describe("MA Auction", () => {
         it("should change erc20 balances for bidders for nft-1155", async () => {
             const startPrice = 100;
             await contract.listItemWithAmountOnAuction(tokenId, startPrice, 10);
-            await contract.connect(bidder1).makeBidForItemWithAmount(tokenId, startPrice);
-            await contract.connect(bidder2).makeBidForItemWithAmount(tokenId, startPrice + 10);
+            await contract.connect(bidder1).makeBidForItemWithAmount(tokenId, owner.address, startPrice);
+            await contract.connect(bidder2).makeBidForItemWithAmount(tokenId, owner.address, startPrice + 10);
             const erc20Bidder1Amount = await erc20.balanceOf(bidder1.address);
             const erc20Bidder2Amount = await erc20.balanceOf(bidder2.address);
             const erc20ContractAmount = await erc20.balanceOf(contract.address);
@@ -364,7 +363,7 @@ describe("MA Auction", () => {
             const startPrice = 100;
             await contract.listItemOnAuction(tokenId, startPrice);
             const nextTimestamp = await setTimeInBlockchain();
-            const tx = contract.connect(bidder1).makeBid(tokenId, startPrice+1);
+            const tx = contract.connect(bidder1).makeBid(tokenId, owner.address, startPrice+1);
 
             await expect(tx).to.emit(contract, "NewBid")
                 .withArgs(
@@ -381,7 +380,7 @@ describe("MA Auction", () => {
             const amount = 10;
             await contract.listItemWithAmountOnAuction(tokenId, price, amount);
             const nextTimestamp = await setTimeInBlockchain();
-            const tx = contract.connect(bidder1).makeBidForItemWithAmount(tokenId, price+10);
+            const tx = contract.connect(bidder1).makeBidForItemWithAmount(tokenId, owner.address, price+10);
 
             await expect(tx).to.emit(contract, "NewBid")
                 .withArgs(
@@ -397,32 +396,32 @@ describe("MA Auction", () => {
     describe("finish auction", () => {
         it("should revert for nft-721 if called when paused", async () => {
             await contract.pause();
-            const tx = contract.finishAuction(tokenId);
+            const tx = contract.finishAuction(tokenId, owner.address);
             await expect(tx).to.be.reverted;
         });
 
         it("should revert for nft-1155 if called when paused", async () => {
             await contract.pause();
-            const tx = contract.finishAuctionForItemWithAmount(tokenId);
+            const tx = contract.finishAuctionForItemWithAmount(tokenId, owner.address);
             await expect(tx).to.be.reverted;
         });
 
         it("should revert for nft-721 if no such lot", async () => {
-            const tx = contract.connect(bidder1).finishAuction(tokenId);
-            await expect(tx).to.be.revertedWith("MAStorage: no such nft");
+            const tx = contract.connect(bidder1).finishAuction(tokenId, owner.address);
+            await expect(tx).to.be.revertedWith("MAStorage: no such lot");
         });
 
         it("should revert for nft-1155 if no such lot", async () => {
             const tx = contract.connect(bidder1)
-                .finishAuctionForItemWithAmount(tokenId);
-            await expect(tx).to.be.revertedWith("MAStorage: no such nft");
+                .finishAuctionForItemWithAmount(tokenId, owner.address);
+            await expect(tx).to.be.revertedWith("MAStorage: no such lot");
         });
 
         it("should revert for nft-721 if auction hasn't ended", async () => {
             const startPrice = 100;
             await contract.listItemOnAuction(tokenId, startPrice);
             const tx = contract.connect(bidder1)
-                .finishAuction(tokenId);
+                .finishAuction(tokenId, owner.address);
             await expect(tx).to.be.revertedWith("MAAuction: auction is not ended");
         });
 
@@ -430,18 +429,18 @@ describe("MA Auction", () => {
             const startPrice = 100;
             await contract.listItemWithAmountOnAuction(tokenId, startPrice, 10);
             const tx = contract.connect(bidder1)
-                .finishAuctionForItemWithAmount(tokenId);
+                .finishAuctionForItemWithAmount(tokenId, owner.address);
             await expect(tx).to.be.revertedWith("MAAuction: auction is not ended");
         });
 
         it("should cancel if less than 2 bids and reset the lot details, for nft-721", async () => {
             const startPrice = 100;
             await contract.listItemOnAuction(tokenId, startPrice);
-            await contract.connect(bidder1).makeBid(tokenId, startPrice);
+            await contract.connect(bidder1).makeBid(tokenId, owner.address, startPrice);
             await delay(auctionDuration);
 
-            await contract.connect(bidder1).finishAuction(tokenId);
-            const [lot, lastBid] = await contract.getDetailsForItem(tokenId);
+            await contract.connect(bidder1).finishAuction(tokenId, owner.address);
+            const [lot, lastBid] = await contract.getDetailsForItem(tokenId, erc721.address, owner.address);
             expect(lot.amount).eq(0);
             expect(lastBid.no).eq(0);
         });
@@ -450,13 +449,13 @@ describe("MA Auction", () => {
             const startPrice = 100;
             await contract.listItemWithAmountOnAuction(tokenId, startPrice, 10);
             await contract.connect(bidder1)
-                .makeBidForItemWithAmount(tokenId, startPrice);
+                .makeBidForItemWithAmount(tokenId, owner.address, startPrice);
             await delay(auctionDuration);
 
             await contract.connect(bidder1)
-                .finishAuctionForItemWithAmount(tokenId);
+                .finishAuctionForItemWithAmount(tokenId, owner.address);
             const [lot, lastBid] =
-                await contract.getDetailsForItemWithAmount(tokenId);
+                await contract.getDetailsForItem(tokenId, erc1155.address, owner.address);
             expect(lot.amount).eq(0);
             expect(lastBid.no).eq(0);
         });
@@ -464,11 +463,11 @@ describe("MA Auction", () => {
         it("should cancel if less than 2 bids and transfer tokens back to owners, for nft-721", async () => {
             const startPrice = 100;
             await contract.listItemOnAuction(tokenId, startPrice);
-            await contract.connect(bidder1).makeBid(tokenId, startPrice);
+            await contract.connect(bidder1).makeBid(tokenId, owner.address, startPrice);
             await delay(auctionDuration);
 
             const amountBefore = await erc20.balanceOf(bidder1.address);
-            await contract.connect(bidder1).finishAuction(tokenId);
+            await contract.connect(bidder1).finishAuction(tokenId, owner.address);
             const amountAfter = await erc20.balanceOf(bidder1.address);
             const nftOwnerAfter = await erc721.ownerOf(tokenId);
 
@@ -481,13 +480,13 @@ describe("MA Auction", () => {
             const amount = 10;
             await contract.listItemWithAmountOnAuction(tokenId, startPrice, amount);
             await contract.connect(bidder1)
-                .makeBidForItemWithAmount(tokenId, startPrice);
+                .makeBidForItemWithAmount(tokenId, owner.address, startPrice);
             await delay(auctionDuration);
 
             const amountBefore = await erc20.balanceOf(bidder1.address);
             const nftAmountBefore = await erc1155.balanceOf(owner.address, tokenId);
             await contract.connect(bidder1)
-                .finishAuctionForItemWithAmount(tokenId);
+                .finishAuctionForItemWithAmount(tokenId, owner.address);
             const amountAfter = await erc20.balanceOf(bidder1.address);
             const nftAmountAfter = await erc1155.balanceOf(owner.address, tokenId);
 
@@ -498,12 +497,12 @@ describe("MA Auction", () => {
         it("should finish and reset the lot details, for nft-721", async () => {
             const startPrice = 100;
             await contract.listItemOnAuction(tokenId, startPrice);
-            await contract.connect(bidder1).makeBid(tokenId, startPrice);
-            await contract.connect(bidder2).makeBid(tokenId, startPrice + 10);
+            await contract.connect(bidder1).makeBid(tokenId, owner.address, startPrice);
+            await contract.connect(bidder2).makeBid(tokenId, owner.address, startPrice + 10);
             await delay(auctionDuration);
 
-            await contract.finishAuction(tokenId);
-            const [lot, lastBid] = await contract.getDetailsForItem(tokenId);
+            await contract.finishAuction(tokenId, owner.address);
+            const [lot, lastBid] = await contract.getDetailsForItem(tokenId, erc721.address, owner.address);
             expect(lot.amount).eq(0);
             expect(lastBid.no).eq(0);
         });
@@ -513,14 +512,14 @@ describe("MA Auction", () => {
             const amount = 10;
             await contract.listItemWithAmountOnAuction(tokenId, startPrice, amount);
             await contract.connect(bidder1)
-                .makeBidForItemWithAmount(tokenId, startPrice);
+                .makeBidForItemWithAmount(tokenId, owner.address, startPrice);
             await contract.connect(bidder2)
-                .makeBidForItemWithAmount(tokenId, startPrice + 10);
+                .makeBidForItemWithAmount(tokenId, owner.address, startPrice + 10);
             await delay(auctionDuration);
 
-            await contract.finishAuctionForItemWithAmount(tokenId);
+            await contract.finishAuctionForItemWithAmount(tokenId, owner.address);
             const [lot, lastBid] =
-                await contract.getDetailsForItemWithAmount(tokenId);
+                await contract.getDetailsForItem(tokenId, erc1155.address, owner.address,);
             expect(lot.amount).eq(0);
             expect(lastBid.no).eq(0);
         });
@@ -528,12 +527,12 @@ describe("MA Auction", () => {
         it("should finish and transfer tokens to new owners, for nft-721", async () => {
             const startPrice = 100;
             await contract.listItemOnAuction(tokenId, startPrice);
-            await contract.connect(bidder1).makeBid(tokenId, startPrice);
-            await contract.connect(bidder2).makeBid(tokenId, startPrice + 10);
+            await contract.connect(bidder1).makeBid(tokenId, owner.address, startPrice);
+            await contract.connect(bidder2).makeBid(tokenId, owner.address, startPrice + 10);
             await delay(auctionDuration);
 
             const amountBefore = await erc20.balanceOf(owner.address);
-            await contract.connect(bidder1).finishAuction(tokenId);
+            await contract.connect(bidder1).finishAuction(tokenId, owner.address);
             const amountAfter = await erc20.balanceOf(owner.address);
             const nftOwnerAfter = await erc721.ownerOf(tokenId);
 
@@ -546,16 +545,16 @@ describe("MA Auction", () => {
             const amount = 10;
             await contract.listItemWithAmountOnAuction(tokenId, startPrice, amount);
             await contract.connect(bidder1)
-                .makeBidForItemWithAmount(tokenId, startPrice);
+                .makeBidForItemWithAmount(tokenId, owner.address, startPrice);
             await contract.connect(bidder2)
-                .makeBidForItemWithAmount(tokenId, startPrice + 10);
+                .makeBidForItemWithAmount(tokenId, owner.address, startPrice + 10);
             await delay(auctionDuration);
 
             const amountBefore = await erc20.balanceOf(owner.address);
             const nftAmountBefore = 
                 await erc1155.balanceOf(bidder2.address, tokenId);
             
-            await contract.finishAuctionForItemWithAmount(tokenId);
+            await contract.finishAuctionForItemWithAmount(tokenId, owner.address);
             
             const amountAfter = await erc20.balanceOf(owner.address);
             const nftAmountAfter = 
@@ -568,14 +567,14 @@ describe("MA Auction", () => {
         it("should emit event for nft-721", async () => {
             const startPrice = 100;
             await contract.listItemOnAuction(tokenId, startPrice);
-            await contract.connect(bidder1).makeBid(tokenId, startPrice);
-            await contract.connect(bidder2).makeBid(tokenId, startPrice + 10);
+            await contract.connect(bidder1).makeBid(tokenId, owner.address, startPrice);
+            await contract.connect(bidder2).makeBid(tokenId, owner.address, startPrice + 10);
             await delay(auctionDuration);
             
             await network.provider.send("evm_mine");
 
             const nextTimestamp = await setTimeInBlockchain();
-            const tx = contract.connect(bidder1).finishAuction(tokenId);
+            const tx = contract.connect(bidder1).finishAuction(tokenId, owner.address);
 
             await expect(tx).to.emit(contract, "AuctionFinished")
                 .withArgs(
@@ -594,13 +593,13 @@ describe("MA Auction", () => {
 
             await contract.listItemWithAmountOnAuction(tokenId, startPrice, amount);
             await contract.connect(bidder1)
-                .makeBidForItemWithAmount(tokenId, startPrice);
+                .makeBidForItemWithAmount(tokenId, owner.address, startPrice);
             await contract.connect(bidder2)
-                .makeBidForItemWithAmount(tokenId, startPrice + 10);
+                .makeBidForItemWithAmount(tokenId, owner.address, startPrice + 10);
             await delay(auctionDuration);
             await network.provider.send("evm_mine");
             const nextTimestamp = await setTimeInBlockchain();
-            const tx = contract.finishAuctionForItemWithAmount(tokenId);
+            const tx = contract.finishAuctionForItemWithAmount(tokenId, owner.address);
 
             await expect(tx).to.emit(contract, "AuctionFinished")
                 .withArgs(

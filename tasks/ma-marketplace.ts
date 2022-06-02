@@ -76,7 +76,7 @@ task("buy-nft721", "Buy item")
             args.contract,
             owner
         );
-        await contract.buyItem(args.tokenId);
+        await contract.buyItem(args.tokenId, owner.address);
     });
 
 task("buy-nft1155", "Make a bid on auction")
@@ -90,7 +90,7 @@ task("buy-nft1155", "Make a bid on auction")
             args.contract,
             owner
         );
-        await contract.buyItemWithAmount(args.tokenId, args.amount);
+        await contract.buyItemWithAmount(args.tokenId, owner.address, args.amount);
     });
 
 task("cancel-nft721", "Unlist item from selling")

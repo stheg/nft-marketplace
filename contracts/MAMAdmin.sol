@@ -80,11 +80,4 @@ contract MAMAdmin is Ownable, Pausable, ERC721Holder, ERC1155Holder {
     ) internal {
         IERC20(_exchangeToken).transferFrom(from, to, amount);
     }
-
-    function _transferExchangeTokens(
-        address to,
-        uint128 amount
-    ) internal {
-        IERC20(_exchangeToken).transfer(to, amount);
-    }
 }

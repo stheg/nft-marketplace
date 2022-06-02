@@ -44,7 +44,7 @@ task("au-bid-nft721", "Make a bid on auction")
             args.contract,
             owner
         );
-        await contract.makeBid(args.tokenId, args.price);
+        await contract.makeBid(args.tokenId, owner.address, args.price);
     });
 
 task("au-bid-nft1155", "Make a bid on auction")
@@ -58,7 +58,7 @@ task("au-bid-nft1155", "Make a bid on auction")
             args.contract,
             owner
         );
-        await contract.makeBidForItemWithAmount(args.tokenId, args.price);
+        await contract.makeBidForItemWithAmount(args.tokenId, owner.address, args.price);
     });
 
 task("au-finish-nft721", "Finish an auction")
@@ -71,7 +71,7 @@ task("au-finish-nft721", "Finish an auction")
             args.contract,
             owner
         );
-        await contract.finishAuction(args.tokenId);
+        await contract.finishAuction(args.tokenId, owner.address);
     });
 
 task("au-finish-nft1155", "Finish an auction")
@@ -84,5 +84,5 @@ task("au-finish-nft1155", "Finish an auction")
             args.contract,
             owner
         );
-        await contract.finishAuctionForItemWithAmount(args.tokenId);
+        await contract.finishAuctionForItemWithAmount(args.tokenId, owner.address);
     });

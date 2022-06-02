@@ -57,7 +57,7 @@ contract MAMarketplace is MAAuction {
         external
         whenNotPaused
     {
-        _checkIfNotExists(tokenId, _nft721Address);
+        _checkIfNotExists(tokenId, _nft721Address, msg.sender);
         _listItemWithAmount(tokenId, _nft721Address, price, 0);
         _transferERC721Tokens(msg.sender, address(this), tokenId);
     }
@@ -71,7 +71,7 @@ contract MAMarketplace is MAAuction {
         external
         whenNotPaused
     {
-        Lot storage item = _getLot(tokenId, _nft1155Address);
+        Lot storage item = _getLot(tokenId, _nft1155Address, msg.sender);
         if (item.isAuction)
             revert CannotListItemIfAuctionExists();
         _listItemWithAmount(
@@ -84,17 +84,17 @@ contract MAMarketplace is MAAuction {
     }
 
     /// @notice buy ERC721 item
-    function buyItem(uint64 tokenId) external whenNotPaused {
-        _buyItemWithAmount(tokenId, _nft721Address, 0);
+    function buyItem(uint64 tokenId, address seller) external whenNotPaused {
+        _buyItemWithAmount(tokenId, _nft721Address, seller, 0);
         _transferERC721Tokens(address(this), msg.sender, tokenId);
     }
 
     /// @notice buy desired amount of ERC1155 item
-    function buyItemWithAmount(uint64 tokenId, uint128 amount)
+    function buyItemWithAmount(uint64 tokenId, address seller, uint128 amount)
         external
         whenNotPaused
     {
-        _buyItemWithAmount(tokenId, _nft1155Address, amount);
+        _buyItemWithAmount(tokenId, _nft1155Address, seller, amount);
         _transferERC1155Tokens(address(this), msg.sender, tokenId, amount);
     }
 
@@ -125,16 +125,17 @@ contract MAMarketplace is MAAuction {
     function _buyItemWithAmount(
         uint64 tokenId,
         address token,
+        address seller,
         uint128 amount // = 0 for ERC721
     ) private {
-        Lot memory item = _checkIfExists(tokenId, token);
+        Lot memory item = _checkIfExists(tokenId, token, seller);
         if (item.amount == amount) {
-            _resetLot(tokenId, token);
+            _resetLot(tokenId, token, seller);
         } else if (item.amount > amount) {
             _setLotWithAmount(
                 tokenId,
                 token,
-                item.seller,
+                seller,
                 item.startPrice,
                 item.amount - amount
             );
@@ -145,11 +146,11 @@ contract MAMarketplace is MAAuction {
         uint128 exchangeTokenAmount = _isCollectableToken(token)
             ? item.startPrice * amount
             : item.startPrice;
-        _transferExchangeTokens(msg.sender, item.seller, exchangeTokenAmount);
+        _transferExchangeTokens(msg.sender, seller, exchangeTokenAmount);
 
         emit Sold(
             token,
-            item.seller,
+            seller,
             msg.sender,
             uint64(block.timestamp),
             tokenId,
@@ -162,16 +163,16 @@ contract MAMarketplace is MAAuction {
         private
         returns (address nftRecipient, uint128 amount)
     {
-        Lot memory item = _checkIfExists(tokenId, token);
-        require(msg.sender == item.seller, "MAMarketplace: no access");
-        _resetLot(tokenId, token);
+        Lot memory item = _checkIfExists(tokenId, token, msg.sender);
 
-        emit Cancelled(token, item.seller, tokenId, uint64(block.timestamp));
+        _resetLot(tokenId, token, msg.sender);
 
-        return (item.seller, item.amount);
+        emit Cancelled(token, msg.sender, tokenId, uint64(block.timestamp));
+
+        return (msg.sender, item.amount);
     }
 
     function _isCollectableToken(address token) private view returns (bool) {
-        return token == _nft1155Address;
+        return IERC165(token).supportsInterface(type(IERC1155).interfaceId);
     }
 }

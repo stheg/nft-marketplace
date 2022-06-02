@@ -9,7 +9,6 @@ import "./MAMAdmin.sol";
 contract MAStorage is MAMAdmin {
     struct Lot {
         bool isAuction;
-        address seller;
         uint64 startDate; //max year ~2550
         uint128 startPrice;
         uint128 amount;
@@ -25,31 +24,35 @@ contract MAStorage is MAMAdmin {
         bool auction
     );
 
-    //TokenId => Lot info
-    mapping(address => mapping(uint64 => Lot)) private _lots;
-
-    function _getLot(uint64 tokenId, address token)
-        internal
-        view
-        returns (Lot storage)
-    {
-        return _lots[token][tokenId];
+    //seller => token => tokenId => Lot info
+    mapping(address => mapping(address => mapping(uint64 => Lot))) private _lots;
+    
+    function _getLot(
+        uint64 tokenId,
+        address token,
+        address seller
+    ) internal view returns (Lot storage) {
+        return _lots[seller][token][tokenId];
     }
 
-    function _checkIfNotExists(uint64 tokenId, address token) internal view {
+    function _checkIfNotExists(
+        uint64 tokenId,
+        address token,
+        address seller
+    ) internal view {
         require(
-            _getLot(tokenId, token).startDate == 0,
-            "MAStorage: nft already listed"
+            _getLot(tokenId, token, seller).startDate == 0,
+            "MAStorage: lot already listed"
         );
     }
 
-    function _checkIfExists(uint64 tokenId, address token)
-        internal
-        view
-        returns (Lot storage lot)
-    {
-        lot = _getLot(tokenId, token);
-        require(lot.startDate > 0, "MAStorage: no such nft");
+    function _checkIfExists(
+        uint64 tokenId,
+        address token,
+        address seller
+    ) internal view returns (Lot storage lot) {
+        lot = _getLot(tokenId, token, seller);
+        require(lot.startDate > 0, "MAStorage: no such lot");
         return lot;
     }
 
@@ -61,16 +64,19 @@ contract MAStorage is MAMAdmin {
         uint128 startPrice,
         uint128 amount
     ) internal returns (Lot storage lot) {
-        lot = _getLot(tokenId, token);
-        lot.seller = seller;
+        lot = _getLot(tokenId, token, seller);
         lot.startPrice = startPrice;
         lot.startDate = uint64(block.timestamp); //max year ~2550
         lot.amount = amount;
         return lot;
     }
 
-    function _resetLot(uint64 tokenId, address token) internal virtual {
-        delete _lots[token][tokenId];
+    function _resetLot(
+        uint64 tokenId,
+        address token, 
+        address seller
+    ) internal virtual {
+        delete _lots[seller][token][tokenId];
     }
 
     function _emitsItemListed(

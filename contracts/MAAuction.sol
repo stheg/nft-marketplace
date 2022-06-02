@@ -31,29 +31,18 @@ contract MAAuction is MAStorage {
     }
 
     uint256 public auctionDuration = 3 days;
-    mapping(address => mapping(uint64 => Bid)) private _bids;
+    //seller => token => tokenId => Bid info
+    mapping(address => mapping(address => mapping(uint64 => Bid))) private _bids;
 
     /// @notice Returns both `Lot` and `Bid` details for ERC721
-    function getDetailsForItem(uint64 tokenId)
+    function getDetailsForItem(uint64 tokenId, address token, address seller)
         external
         view
         returns (Lot memory lot, Bid memory bid)
     {
         return (
-            _getLot(tokenId, _nft721Address),
-            _getLastBid(tokenId, _nft721Address)
-        );
-    }
-
-    /// @notice Returns both `Lot` and `Bid` details for ERC1155
-    function getDetailsForItemWithAmount(uint64 tokenId)
-        external
-        view
-        returns (Lot memory lot, Bid memory bid)
-    {
-        return (
-            _getLot(tokenId, _nft1155Address),
-            _getLastBid(tokenId, _nft1155Address)
+            _getLot(tokenId, token, seller),
+            _getLastBid(tokenId, token, seller)
         );
     }
 
@@ -77,32 +66,33 @@ contract MAAuction is MAStorage {
     }
 
     /// @notice Adds a new bid for ERC721 with desired price
-    function makeBid(uint64 tokenId, uint128 price) external whenNotPaused {
-        _makeBid(tokenId, _nft721Address, price);
+    function makeBid(uint64 tokenId, address seller, uint128 price) external whenNotPaused {
+        _makeBid(tokenId, _nft721Address, seller, price);
     }
 
     /// @notice Adds a new bid for ERC1155 with desired price
-    function makeBidForItemWithAmount(uint64 tokenId, uint128 price)
+    function makeBidForItemWithAmount(uint64 tokenId, address seller, uint128 price)
         external
         whenNotPaused
     {
-        _makeBid(tokenId, _nft1155Address, price);
+        _makeBid(tokenId, _nft1155Address, seller, price);
     }
 
     /// @notice Finishes or cancels the auction for ERC721
-    function finishAuction(uint64 tokenId) external whenNotPaused {
-        (address recipient,) = _finishAuction(tokenId, _nft721Address);
+    function finishAuction(uint64 tokenId, address seller) external whenNotPaused {
+        (address recipient,) = _finishAuction(tokenId, _nft721Address, seller);
         _transferERC721Tokens(address(this), recipient, tokenId);
     }
 
     /// @notice Finishes or cancels the auction for ERC1155
-    function finishAuctionForItemWithAmount(uint64 tokenId)
+    function finishAuctionForItemWithAmount(uint64 tokenId, address seller)
         external
         whenNotPaused
     {
         (address recipient, uint128 amount) = _finishAuction(
             tokenId,
-            _nft1155Address
+            _nft1155Address, 
+            seller
         );
 
         _transferERC1155Tokens(address(this), recipient, tokenId, amount);
@@ -110,13 +100,13 @@ contract MAAuction is MAStorage {
 
     //###################### Internal Overriden ###############################
 
-    function _resetLot(uint64 tokenId, address token)
+    function _resetLot(uint64 tokenId, address token, address seller)
         internal
         virtual
         override
     {
-        delete _bids[token][tokenId];
-        super._resetLot(tokenId, token);
+        delete _bids[seller][token][tokenId];
+        super._resetLot(tokenId, token, seller);
     }
 
     //########################### Private #####################################
@@ -127,7 +117,7 @@ contract MAAuction is MAStorage {
         uint128 startPrice,
         uint128 amount
     ) private {
-        _checkIfNotExists(tokenId, token);
+        _checkIfNotExists(tokenId, token, msg.sender);
         Lot storage lot = _setLotWithAmount(
             tokenId,
             token,
@@ -143,20 +133,21 @@ contract MAAuction is MAStorage {
     function _makeBid(
         uint64 tokenId,
         address token,
+        address seller,
         uint128 price
     ) private {
-        Lot memory lot = _checkIfExists(tokenId, token);
+        Lot memory lot = _checkIfExists(tokenId, token, seller);
         require(
             block.timestamp < lot.startDate + auctionDuration,
             "MAAuction: auction has ended"
         );
-        Bid memory lastBid = _getLastBid(tokenId, token);
+        Bid memory lastBid = _getLastBid(tokenId, token, seller);
         require(
             price >= lot.startPrice && price > lastBid.value,
             "MAAuction: incorrect bid price"
         );
 
-        _updateBid(tokenId, token, msg.sender, price);
+        _updateBid(tokenId, token, seller, msg.sender, price);
 
         uint128 exchangeValue = msg.sender == lastBid.bidder
             ? price - lastBid.value
@@ -168,34 +159,34 @@ contract MAAuction is MAStorage {
         if (msg.sender == lastBid.bidder) return;
         if (lastBid.bidder == address(0)) return;
 
-        _transferExchangeTokens(lastBid.bidder, lastBid.value);
+        _transferExchangeTokens(address(this), lastBid.bidder, lastBid.value);
     }
 
-    function _finishAuction(uint64 tokenId, address token)
+    function _finishAuction(uint64 tokenId, address token, address seller)
         private
         returns (address nftRecipient, uint128 amount)
     {
-        Lot memory lot = _checkIfExists(tokenId, token);
+        Lot memory lot = _checkIfExists(tokenId, token, seller);
         require(
             block.timestamp > lot.startDate + auctionDuration,
             "MAAuction: auction is not ended"
         );
-        Bid memory lastBid = _getLastBid(tokenId, token);
+        Bid memory lastBid = _getLastBid(tokenId, token, seller);
 
-        _resetLot(tokenId, token);
+        _resetLot(tokenId, token, seller);
 
         address erc20Recipient;
         if (lastBid.no >= 2) {
             //successful auction: exchange erc20 and NFT
-            erc20Recipient = lot.seller;
+            erc20Recipient = seller;
             nftRecipient = lastBid.bidder;
         } else {
             //cancelled auction: return tokens to owners
             erc20Recipient = lastBid.bidder;
-            nftRecipient = lot.seller;
+            nftRecipient = seller;
         }
 
-        _transferExchangeTokens(erc20Recipient, lastBid.value);
+        _transferExchangeTokens(address(this), erc20Recipient, lastBid.value);
 
         emit AuctionFinished(
             uint64(block.timestamp),
@@ -212,10 +203,11 @@ contract MAAuction is MAStorage {
     function _updateBid(
         uint64 tokenId,
         address token,
+        address seller,
         address bidder,
         uint128 value
     ) private returns (Bid storage bid) {
-        bid = _getLastBid(tokenId, token);
+        bid = _getLastBid(tokenId, token, seller);
         bid.bidder = bidder;
         bid.value = value;
         bid.no++;
@@ -223,11 +215,11 @@ contract MAAuction is MAStorage {
         return bid;
     }
 
-    function _getLastBid(uint64 tokenId, address token)
+    function _getLastBid(uint64 tokenId, address token, address seller)
         private
         view
         returns (Bid storage)
     {
-        return _bids[token][tokenId];
+        return _bids[seller][token][tokenId];
     }
 }
